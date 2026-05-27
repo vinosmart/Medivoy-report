@@ -1,39 +1,190 @@
 <template>
-  <div class="max-w-3xl mx-auto space-y-6">
-    <h2 class="text-lg font-semibold text-medivoy-900">Family Health Intelligence</h2>
-    <p class="text-sm text-medivoy-500">Add family members to unlock hereditary risk predictions.</p>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div v-for="member in family" :key="member.id" class="bg-white rounded-2xl border border-medivoy-200 p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-full bg-medivoy-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-medivoy-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-          </div>
-          <div><p class="text-sm font-semibold text-medivoy-900">{{ member.name }}</p><p class="text-xs text-medivoy-500 capitalize">{{ member.relation }}</p></div>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <span v-for="condition in member.conditions" :key="condition" class="px-2 py-1 rounded-md bg-medivoy-50 text-[11px] font-medium text-medivoy-600 border border-medivoy-100">{{ condition }}</span>
-        </div>
-      </div>
-      <button class="bg-white rounded-2xl border border-dashed border-medivoy-300 p-5 flex flex-col items-center justify-center gap-2 hover:border-medivoy-accent hover:bg-medivoy-50 transition-colors text-medivoy-500 hover:text-medivoy-accent">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-        <span class="text-sm font-medium">Add Family Member</span>
-      </button>
+  <div class="space-y-6">
+    <div>
+      <h3 class="text-2xl font-bold text-slate-900">Family Health</h3>
+      <p class="text-sm text-slate-500">
+        Track hereditary conditions and health history across your family.
+      </p>
     </div>
-    <div class="bg-white rounded-2xl border border-medivoy-200 p-6">
-      <h3 class="text-sm font-semibold text-medivoy-900 mb-3">Predicted Hereditary Risks</h3>
-      <div class="space-y-3">
-        <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100"><div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-sm font-medium text-amber-900">Type 2 Diabetes</span></div><span class="text-xs font-semibold text-amber-700">Moderate Risk</span></div>
-        <div class="flex items-center justify-between p-3 rounded-xl bg-rose-50 border border-rose-100"><div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-sm font-medium text-rose-900">Hypertension</span></div><span class="text-xs font-semibold text-rose-700">High Risk</span></div>
-        <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100"><div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-sm font-medium text-emerald-900">Heart Disease</span></div><span class="text-xs font-semibold text-emerald-700">Low Risk</span></div>
+
+    <form
+      @submit.prevent="addMember"
+      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+    >
+      <p class="font-semibold text-slate-800">Add family member</p>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <input
+          v-model="form.name"
+          placeholder="Name"
+          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+        />
+        <select
+          v-model="form.relation"
+          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+        >
+          <option value="">Relation</option>
+          <option v-for="r in relations" :key="r" :value="r">{{ r }}</option>
+        </select>
+        <input
+          v-model="form.age"
+          type="number"
+          placeholder="Age"
+          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+        />
       </div>
+      <input
+        v-model="form.conditions"
+        placeholder="Known conditions (e.g. Diabetes, Hypertension)"
+        class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
+      />
+      <button
+        :disabled="saving"
+        class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+      >
+        {{ saving ? "Saving..." : "Add Member" }}
+      </button>
+    </form>
+
+    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <p class="font-semibold text-slate-800 mb-4">Family members</p>
+      <div v-if="loading" class="space-y-3 animate-pulse">
+        <div
+          v-for="n in 2"
+          :key="n"
+          class="h-16 rounded-2xl bg-slate-100"
+        ></div>
+      </div>
+      <div v-else-if="members.length" class="space-y-3">
+        <div
+          v-for="m in members"
+          :key="m.id"
+          class="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 p-4 gap-3"
+        >
+          <div>
+            <p class="font-semibold text-slate-900">
+              {{ m.name }}
+              <span class="text-xs text-slate-500 font-normal ml-1">{{
+                m.relation
+              }}</span>
+            </p>
+            <p class="text-xs text-slate-500 mt-1">Age: {{ m.age || "—" }}</p>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span
+                v-for="(c, ci) in splitConditions(m.conditions)"
+                :key="ci"
+                class="rounded-full bg-rose-50 text-rose-700 px-3 py-1 text-xs font-medium"
+                >{{ c }}</span
+              >
+              <span
+                v-if="!splitConditions(m.conditions).length"
+                class="text-xs text-slate-400"
+                >No conditions listed</span
+              >
+            </div>
+          </div>
+          <button
+            @click="removeMember(m.id)"
+            class="rounded-xl border border-rose-200 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 self-start"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+      <div v-else class="py-12 text-center text-slate-400 text-sm">
+        No family members added yet.
+      </div>
+    </div>
+
+    <div
+      v-if="riskConditions.length"
+      class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm space-y-3"
+    >
+      <p class="font-semibold text-amber-800">Hereditary risk summary</p>
+      <p class="text-sm text-amber-700">
+        These conditions appear in multiple family members and may carry
+        elevated hereditary risk:
+      </p>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <span
+          v-for="(c, i) in riskConditions"
+          :key="i"
+          class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold"
+          >{{ c }}</span
+        >
+      </div>
+      <p class="text-xs text-amber-600 mt-2">
+        Consult a clinician for a detailed hereditary risk assessment.
+      </p>
     </div>
   </div>
 </template>
 
-<script setup>
-const family = ref([
-  { id: "f1", relation: "father", name: "Ramesh K.", conditions: ["Hypertension", "Type 2 Diabetes"] },
-  { id: "f2", relation: "mother", name: "Lakshmi K.", conditions: ["Hypothyroidism"] },
-  { id: "f3", relation: "sister", name: "Priya K.", conditions: ["Anemia"] },
-]);
+<script setup lang="ts">
+const api = useMedivoyApi();
+const relations = [
+  "Father",
+  "Mother",
+  "Brother",
+  "Sister",
+  "Grandfather",
+  "Grandmother",
+  "Uncle",
+  "Aunt",
+  "Son",
+  "Daughter",
+];
+const form = reactive({ name: "", relation: "", age: "", conditions: "" });
+const members = ref<any[]>([]);
+const loading = ref(true);
+const saving = ref(false);
+
+const splitConditions = (c: string) =>
+  c
+    ? c
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean)
+    : [];
+
+onMounted(async () => {
+  try {
+    members.value = await api.getFamilyMembers();
+  } catch {
+    members.value = [];
+  } finally {
+    loading.value = false;
+  }
+});
+
+const addMember = async () => {
+  if (!form.name) return;
+  saving.value = true;
+  try {
+    const res = await api.addFamilyMember({ ...form });
+    members.value.push(res);
+    form.name = "";
+    form.relation = "";
+    form.age = "";
+    form.conditions = "";
+  } finally {
+    saving.value = false;
+  }
+};
+
+const removeMember = async (id: string) => {
+  await api.deleteFamilyMember(id);
+  members.value = members.value.filter((m: any) => m.id !== id);
+};
+
+const riskConditions = computed(() => {
+  const count: Record<string, number> = {};
+  for (const m of members.value)
+    for (const c of splitConditions(m.conditions)) {
+      const k = c.toLowerCase();
+      count[k] = (count[k] || 0) + 1;
+    }
+  return Object.entries(count)
+    .filter(([, v]) => v > 1)
+    .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+});
 </script>

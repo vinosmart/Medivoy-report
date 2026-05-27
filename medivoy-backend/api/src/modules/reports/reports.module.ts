@@ -4,10 +4,5 @@ import { ReportsController } from './reports.controller'
 import { ReportsService } from './reports.service'
 import { Report } from './entities/report.entity'
 import { AiModule } from '../ai/ai.module'
-
-@Module({
-  imports: [TypeOrmModule.forFeature([Report]), AiModule],
-  controllers: [ReportsController],
-  providers: [ReportsService],
-})
+@Module({ imports: [TypeOrmModule.forFeature([Report]), AiModule], controllers: [ReportsController], providers: [ReportsService] })
 export class ReportsModule {}

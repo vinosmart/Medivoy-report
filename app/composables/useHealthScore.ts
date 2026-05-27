@@ -1,1 +1,0 @@
-export function useHealthScore(markers) { return { score: 87, risk: 24 }; }

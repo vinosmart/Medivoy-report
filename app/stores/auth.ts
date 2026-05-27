@@ -1,39 +1,24 @@
 import { defineStore } from 'pinia'
-
-type Role = 'patient' | 'doctor' | 'admin'
-
-type User = {
-  id: string
-  email: string
-  role: Role
-  name?: string
-}
-
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
+  const user = ref<any>(null)
   const token = ref<string | null>(null)
-
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
-  function login(userData: User, accessToken: string) {
+  function loadFromStorage() {
+    if (!import.meta.client) return
+    const u = localStorage.getItem('medivoy_user')
+    const t = localStorage.getItem('medivoy_token')
+    if (u) user.value = JSON.parse(u)
+    if (t) token.value = t
+  }
+
+  function login(userData: any, accessToken: string) {
     user.value = userData
     token.value = accessToken
     if (import.meta.client) {
       localStorage.setItem('medivoy_user', JSON.stringify(userData))
       localStorage.setItem('medivoy_token', accessToken)
-    }
-  }
-
-  function loadFromStorage() {
-    if (!import.meta.client) return
-    try {
-      const savedUser = localStorage.getItem('medivoy_user')
-      const savedToken = localStorage.getItem('medivoy_token')
-      if (savedUser) user.value = JSON.parse(savedUser)
-      if (savedToken) token.value = savedToken
-    } catch (e) {
-      console.error('[Auth] Failed to restore from storage', e)
     }
   }
 
@@ -46,5 +31,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, isLoggedIn, isAdmin, login, loadFromStorage, logout }
+  return { user, token, isLoggedIn, isAdmin, loadFromStorage, login, logout }
 })
