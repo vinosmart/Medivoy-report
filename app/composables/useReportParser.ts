@@ -1,0 +1,1 @@
+export function useReportParser() { return { parse: (text) => [] }; }
