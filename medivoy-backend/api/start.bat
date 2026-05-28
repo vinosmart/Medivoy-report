@@ -1,3 +1,0 @@
-@echo off
-echo Starting Medivoy API...
-nest start --watch
