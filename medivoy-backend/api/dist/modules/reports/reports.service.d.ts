@@ -17,6 +17,7 @@ export declare class ReportsService {
     private ocrPdfFallback;
     private extractFromImage;
     private ocrImages;
+    private normalizeUnit;
     findByUser(userId: string): Promise<Report[]>;
     findOne(id: string, userId: string): Promise<Report>;
     update(id: string, updates: Partial<Report>): Promise<Report>;

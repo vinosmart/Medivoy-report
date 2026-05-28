@@ -75,22 +75,27 @@ let ReportsService = class ReportsService {
     }
     async processReport(reportId, filePath, type) {
         try {
-            let ocrText = '';
+            let extractedText = '';
             if (filePath && fs.existsSync(filePath)) {
-                ocrText = await this.extractTextFromFile(filePath, type);
+                extractedText = await this.extractTextFromFile(filePath);
             }
-            if (!ocrText || ocrText.trim().length < 20) {
+            if (!extractedText || extractedText.trim().length < 20) {
                 const fallback = await this.readFallbackText(reportId, filePath);
                 if (fallback)
-                    ocrText = fallback;
+                    extractedText = fallback;
             }
             const normalizedType = String(type || '').toLowerCase();
+            console.log('[processReport] reportId:', reportId);
+            console.log('[processReport] filePath:', filePath);
+            console.log('[processReport] type:', normalizedType);
+            console.log('[processReport] extractedText length:', extractedText?.length || 0);
             const markers = normalizedType === 'dna'
-                ? this.extractDnaFindingsAsMarkers(ocrText)
+                ? this.extractDnaFindingsAsMarkers(extractedText)
                 : normalizedType === 'blood'
-                    ? this.extractBloodMarkersFromText(ocrText)
+                    ? this.extractBloodMarkersFromText(extractedText)
                     : [];
-            const result = await this.aiService.analyzeReport(ocrText, markers, type);
+            console.log('[processReport] markers length:', markers.length);
+            const result = await this.aiService.analyzeReport(extractedText, markers, type);
             const fallbackMarkers = markers.length > 0
                 ? markers
                 : result.findings?.map((f) => ({
@@ -110,48 +115,9 @@ let ReportsService = class ReportsService {
                     followUp: [],
                 },
                 findings: result.findings || [],
-                extractedText: ocrText || '',
+                extractedText: extractedText || '',
                 markers: fallbackMarkers,
             };
-            if (this.hasColumn('confidenceScore')) {
-                updatePayload.confidenceScore = result.confidenceScore ?? 0;
-            }
-            if (this.hasColumn('reportType')) {
-                updatePayload.reportType = result.reportType || type;
-            }
-            if (this.hasColumn('overallHealthScore')) {
-                updatePayload.overallHealthScore = result.overallHealthScore ?? 70;
-            }
-            if (this.hasColumn('longTermInsights')) {
-                updatePayload.longTermInsights = result.longTermInsights || [];
-            }
-            if (this.hasColumn('fiveYearAnswers')) {
-                updatePayload.fiveYearAnswers = result.fiveYearAnswers || [];
-            }
-            if (this.hasColumn('riskCategories')) {
-                updatePayload.riskCategories = result.riskCategories || {};
-            }
-            if (this.hasColumn('keyInsights')) {
-                updatePayload.keyInsights = result.keyInsights || [];
-            }
-            if (this.hasColumn('positiveFindings')) {
-                updatePayload.positiveFindings = result.positiveFindings || [];
-            }
-            if (this.hasColumn('criticalFindings')) {
-                updatePayload.criticalFindings = result.criticalFindings || [];
-            }
-            if (this.hasColumn('missingImportantMarkers')) {
-                updatePayload.missingImportantMarkers = result.missingImportantMarkers || [];
-            }
-            if (this.hasColumn('patternAnalysis')) {
-                updatePayload.patternAnalysis = result.patternAnalysis || [];
-            }
-            if (this.hasColumn('dnaTraits')) {
-                updatePayload.dnaTraits = result.dnaTraits || [];
-            }
-            if (this.hasColumn('warnings')) {
-                updatePayload.warnings = result.warnings || [];
-            }
             if (this.hasColumn('confidenceScore')) {
                 updatePayload.confidenceScore = result.confidenceScore ?? 0;
             }
@@ -213,63 +179,91 @@ let ReportsService = class ReportsService {
             report?.fileUrl ? path.join(process.cwd(), report.fileUrl.replace(/^\//, '')) : '',
             report?.fileUrl || '',
         ].filter(Boolean);
-        for (const c of candidates) {
+        for (const candidate of candidates) {
             try {
-                if (c && fs.existsSync(c)) {
-                    const ext = path.extname(c).toLowerCase();
+                if (candidate && fs.existsSync(candidate)) {
+                    const ext = path.extname(candidate).toLowerCase();
                     if (ext === '.pdf' || ['.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff'].includes(ext)) {
                         continue;
                     }
-                    const text = fs.readFileSync(c, 'utf8');
+                    const text = fs.readFileSync(candidate, 'utf8');
                     if (text && text.trim().length > 20)
                         return text;
                 }
             }
-            catch { }
+            catch (err) {
+                console.warn('[readFallbackText] failed for:', candidate, err);
+            }
         }
         return '';
     }
     extractBloodMarkersFromText(text) {
         const lines = String(text || '')
             .split(/\n+/)
-            .map((l) => l.trim())
+            .map((l) => l.replace(/\s+/g, ' ').trim())
             .filter(Boolean);
         const defs = [
             { name: 'Hemoglobin', labels: ['hemoglobin', 'haemoglobin', 'hb'] },
-            { name: 'WBC', labels: ['wbc', 'white blood cell', 'leucocyte', 'leukocyte'] },
+            { name: 'WBC', labels: ['wbc', 'white blood cell', 'total wbc count', 'tlc'] },
             { name: 'RBC', labels: ['rbc', 'red blood cell'] },
-            { name: 'Platelets', labels: ['platelets', 'platelet count'] },
-            { name: 'Cholesterol', labels: ['cholesterol'] },
+            { name: 'Platelets', labels: ['platelet count', 'platelets'] },
+            { name: 'Glucose', labels: ['fasting plasma glucose', 'fasting glucose', 'glucose', 'blood sugar', 'rbs', 'fbs'] },
+            { name: 'TSH', labels: ['tsh'] },
+            { name: 'AST', labels: ['ast', 'sgot'] },
+            { name: 'ALT', labels: ['alt', 'sgpt'] },
+            { name: 'Cholesterol', labels: ['cholesterol', 'total cholesterol'] },
             { name: 'LDL Cholesterol', labels: ['ldl cholesterol', 'ldl'] },
             { name: 'HDL Cholesterol', labels: ['hdl cholesterol', 'hdl'] },
-            { name: 'Triglycerides', labels: ['triglycerides', 'triglyceride', 'tg'] },
-            { name: 'Glucose', labels: ['glucose', 'blood sugar', 'fbs', 'rbs', 'fasting glucose'] },
+            { name: 'Triglycerides', labels: ['triglycerides', 'tg'] },
             { name: 'Vitamin D', labels: ['vitamin d', '25-oh vitamin d', '25 hydroxy vitamin d'] },
             { name: 'Vitamin B12', labels: ['vitamin b12', 'b12'] },
             { name: 'Ferritin', labels: ['ferritin'] },
-            { name: 'Iron', labels: ['iron'] },
             { name: 'hs-CRP', labels: ['hs-crp', 'hs crp', 'crp'] },
-            { name: 'HbA1c', labels: ['hba1c', 'glycated hemoglobin'] },
-            { name: 'TSH', labels: ['tsh'] },
-            { name: 'ALT', labels: ['alt', 'sgpt'] },
-            { name: 'AST', labels: ['ast', 'sgot'] },
             { name: 'Creatinine', labels: ['creatinine'] },
+            { name: 'HbA1c', labels: ['hba1c', 'glycated hemoglobin'] },
         ];
+        const skipLine = (line) => /^(page no|barcode no|report released on|sample collected on|sample received on|age\s*:|p\.?\s*id|accession no|billing date|report status|sex\s*:|name\s*:|mr\.|mrs\.|dr\.|client processed by|pathkind diagnostics|clinical significance|end of report)/i.test(line);
+        const parseValue = (line) => {
+            const cleaned = line.replace(/[,;]/g, ' ');
+            const patterns = [
+                /(?:^|\s)([<>]?\d+(?:\.\d+)?)(\s*[a-zA-Zμ/%/.-][a-zA-Z0-9μ/%/.-]*)?/,
+                /([<>]?\d+(?:\.\d+)?\s*:\s*\d+)/,
+            ];
+            for (const re of patterns) {
+                const m = cleaned.match(re);
+                if (m) {
+                    const value = (m[1] || '').trim();
+                    const unit = (m[2] || '').trim().replace(/^\s+/, '');
+                    if (value && !/^\d{6,}$/.test(value))
+                        return { value, unit };
+                }
+            }
+            return null;
+        };
         const markers = [];
         for (const def of defs) {
-            for (const line of lines) {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (skipLine(line))
+                    continue;
                 const lower = line.toLowerCase();
                 if (!def.labels.some((l) => lower.includes(l)))
                     continue;
-                const m = line.match(/(?:[:\-]\s*)?([<>]?[=]?)\s*(\d+(?:\.\d+)?)\s*([a-zA-Z%/.-]+)/);
-                if (m) {
-                    markers.push({
-                        name: def.name,
-                        value: m[2],
-                        unit: m[3],
-                    });
-                    break;
+                const candidates = [line, lines[i + 1] || '', lines[i + 2] || ''];
+                for (const candidate of candidates) {
+                    if (skipLine(candidate))
+                        continue;
+                    const parsed = parseValue(candidate);
+                    if (parsed) {
+                        markers.push({
+                            name: def.name,
+                            value: parsed.value,
+                            unit: this.normalizeUnit(parsed.unit || ''),
+                        });
+                        break;
+                    }
                 }
+                break;
             }
         }
         return this.uniqueMarkers(markers);
@@ -293,19 +287,19 @@ let ReportsService = class ReportsService {
             { name: 'CLOCK', regex: /CLOCK[^\n]*?(Variant detected|Normal)/i },
             { name: 'PER3', regex: /PER3[^\n]*?(Variant detected|Normal)/i },
         ];
-        for (const p of patterns) {
-            const m = text.match(p.regex);
-            if (m) {
+        for (const pattern of patterns) {
+            const match = text.match(pattern.regex);
+            if (match) {
                 markers.push({
-                    name: p.name,
-                    value: m[1].trim(),
+                    name: pattern.name,
+                    value: match[1].trim(),
                     unit: '',
                 });
             }
         }
         return this.uniqueMarkers(markers);
     }
-    async extractTextFromFile(filePath, type) {
+    async extractTextFromFile(filePath) {
         const ext = path.extname(filePath).toLowerCase();
         try {
             if (ext === '.pdf')
@@ -313,13 +307,14 @@ let ReportsService = class ReportsService {
             if (['.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff'].includes(ext)) {
                 return await this.extractFromImage(filePath);
             }
-            if (['.txt', '.csv', '.json'].includes(ext))
+            if (['.txt', '.csv', '.json'].includes(ext)) {
                 return fs.readFileSync(filePath, 'utf8');
+            }
             return '';
         }
         catch (err) {
             console.error('extractTextFromFile failed:', err);
-            return err?.message || '';
+            return '';
         }
     }
     async extractFromPdf(filePath) {
@@ -341,10 +336,14 @@ let ReportsService = class ReportsService {
         }
         const cleanText = (extractedText || '')
             .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\uFFFF]/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
-        if (cleanText.length > 50 && !this.looksLikePdfBinary(cleanText)) {
+        console.log('[extractFromPdf] file:', filePath);
+        console.log('[extractFromPdf] pdf-parse length:', cleanText.length);
+        if (cleanText.length > 80 && !this.looksLikePdfBinary(cleanText)) {
             return cleanText;
         }
+        console.log('[extractFromPdf] falling back to OCR for:', filePath);
         return await this.ocrPdfFallback(filePath);
     }
     looksLikePdfBinary(text) {
@@ -371,12 +370,19 @@ let ReportsService = class ReportsService {
             for (let i = 1; i <= 5; i++) {
                 try {
                     const page = await converter(i, { responseType: 'image' });
-                    if (page?.path)
+                    if (page?.path) {
+                        console.log('[ocrPdfFallback] generated page:', page.path);
                         pages.push(page.path);
+                    }
                 }
-                catch {
+                catch (err) {
+                    console.warn(`[ocrPdfFallback] stopped at page ${i}:`, err);
                     break;
                 }
+            }
+            if (!pages.length) {
+                console.warn('[ocrPdfFallback] no pages generated');
+                return '';
             }
             return await this.ocrImages(pages);
         }
@@ -391,6 +397,7 @@ let ReportsService = class ReportsService {
     async ocrImages(imagePaths) {
         if (!imagePaths.length)
             return '';
+        console.log('[ocrImages] imagePaths:', imagePaths);
         const worker = await (0, tesseract_js_1.createWorker)('eng');
         try {
             let combined = '';
@@ -398,11 +405,12 @@ let ReportsService = class ReportsService {
                 try {
                     const { data } = await worker.recognize(imagePath);
                     const text = (data?.text || '').trim();
+                    console.log('[ocrImages] image:', imagePath, 'text length:', text.length);
                     if (text)
                         combined += `${text}\n`;
                 }
                 catch (err) {
-                    console.warn('OCR image failed:', err);
+                    console.warn('OCR image failed:', imagePath, err);
                 }
             }
             return combined.trim();
@@ -410,6 +418,28 @@ let ReportsService = class ReportsService {
         finally {
             await worker.terminate();
         }
+    }
+    normalizeUnit(unit) {
+        const u = String(unit || '').trim();
+        if (!u)
+            return '';
+        if (/^(Mrs\.?|Mr\.?|Ms\.?|Dr\.?|Age|Male|Female|Page|No\.?)$/i.test(u))
+            return '';
+        if (/^(gm\/dL|g\/dL)$/i.test(u))
+            return 'g/dL';
+        if (/^mgdL$/i.test(u))
+            return 'mg/dL';
+        if (/^pgmL$/i.test(u))
+            return 'pg/mL';
+        if (/^ngmL$/i.test(u))
+            return 'ng/mL';
+        if (/^mgL$/i.test(u))
+            return 'mg/L';
+        if (/^KmcL$/i.test(u))
+            return 'K/mcL';
+        if (/^MmcL$/i.test(u))
+            return 'M/mcL';
+        return u;
     }
     async findByUser(userId) {
         return this.repo.find({

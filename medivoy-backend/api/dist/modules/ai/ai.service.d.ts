@@ -76,6 +76,8 @@ export declare class AiService {
     private emptyReport;
     private analyzeBloodReport;
     private extractBloodMarkers;
+    private extractDnaMarkers;
+    private isMetadataLine;
     private analyzeDnaReport;
     private analyzeOtherReport;
     private buildOtherFallback;
@@ -87,6 +89,22 @@ export declare class AiService {
     private detectBloodPatterns;
     private calculateBloodCategoryScores;
     private calculateWeightedHealthScore;
+    private buildDnaSummary;
+    private buildDnaFallbackFindings;
+    private buildDnaFallbackTraits;
+    private buildDnaRecommendations;
+    private buildDnaKeyInsights;
+    private buildDnaPositiveFindings;
+    private buildDnaPatterns;
+    private buildDnaLongTermInsights;
+    private buildDnaFiveYearAnswers;
+    private buildDnaRiskCategories;
+    private getDnaTraitLabel;
+    private getDnaInsight;
+    private getDnaWhy;
+    private getDnaActions;
+    private getDnaStatus;
+    private getDnaSeverity;
     private normalizeFiveYearAnswers;
     private normalizeFindings;
     private normalizePatternInsights;
@@ -100,6 +118,7 @@ export declare class AiService {
     private normalizeOutlook;
     private getString;
     private toNumber;
+    private coerceNumber;
     private uniqueMarkers;
     private detectMissingMarkers;
 }
