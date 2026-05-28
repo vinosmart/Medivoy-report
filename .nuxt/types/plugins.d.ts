@@ -23,7 +23,8 @@ type NuxtAppInjections =
   InjectionType<typeof import("../../node_modules/.pnpm/@nuxt+devtools@3.2.4_vite@7_fa46e1270bba36d80db0204f9e4b5847/node_modules/@nuxt/devtools/dist/runtime/plugins/devtools.server.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/@nuxt+devtools@3.2.4_vite@7_fa46e1270bba36d80db0204f9e4b5847/node_modules/@nuxt/devtools/dist/runtime/plugins/devtools.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.6_@parcel+watcher_ec9c102505d0f86abe10aa4afa114365/node_modules/nuxt/dist/app/plugins/warn.dev.server.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.6_@parcel+watcher_ec9c102505d0f86abe10aa4afa114365/node_modules/nuxt/dist/app/plugins/check-if-layout-used.js")>
+  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.6_@parcel+watcher_ec9c102505d0f86abe10aa4afa114365/node_modules/nuxt/dist/app/plugins/check-if-layout-used.js")> &
+  InjectionType<typeof import("../../app/plugins/auth.client")>
 
 declare module '#app' {
   interface NuxtApp extends NuxtAppInjections { }

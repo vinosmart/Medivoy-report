@@ -1,59 +1,146 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <h3 class="text-2xl font-bold text-slate-900">Lab Kits</h3>
-      <p class="text-sm text-slate-500">
-        Order a home collection kit. Your sample is processed by a Medivoy
-        partner lab and results appear here.
-      </p>
-    </div>
+    <section
+      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
+    >
+      <div class="max-w-3xl">
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Home collection kits
+        </span>
+        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
+          Order a home collection kit.
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+          Your sample is processed by a Medivoy partner lab and results appear
+          here. You can add, edit, and delete kits from the admin panel or
+          inline controls.
+        </p>
+      </div>
+    </section>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <article
         v-for="kit in kits"
         :key="kit.id"
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-4"
+        class="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
       >
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-3">
           <span
             class="rounded-full px-3 py-1 text-xs font-semibold"
             :class="kit.badgeClass"
             >{{ kit.badge }}</span
           >
-          <span class="text-sm font-bold text-slate-900"
+          <span class="text-lg font-bold text-slate-950"
             >Rs. {{ kit.price }}</span
           >
         </div>
-        <div>
-          <p class="font-bold text-slate-900 text-base">{{ kit.name }}</p>
-          <p class="text-xs text-slate-500 mt-1">{{ kit.description }}</p>
+
+        <div class="mt-4">
+          <p class="text-base font-bold text-slate-950">{{ kit.name }}</p>
+          <p class="mt-1 text-sm leading-6 text-slate-500">
+            {{ kit.description }}
+          </p>
         </div>
-        <ul class="space-y-1">
-          <li
+
+        <div class="mt-5 flex flex-wrap gap-2">
+          <span
             v-for="(m, i) in kit.markers"
             :key="i"
-            class="text-xs text-slate-600 flex items-center gap-2"
+            class="rounded-full bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
+            >{{ m }}</span
           >
-            <span class="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0"></span
-            >{{ m }}
-          </li>
-        </ul>
-        <div class="mt-auto pt-2">
+        </div>
+
+        <div class="mt-6 flex gap-2">
           <button
             @click="placeOrder(kit)"
             :disabled="orderingId === kit.id"
-            class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+            class="flex-1 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {{ orderingId === kit.id ? "Ordering..." : "Order kit" }}
           </button>
+          <button
+            @click="editKit(kit)"
+            class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Edit
+          </button>
+          <button
+            @click="deleteKit(kit.id)"
+            class="rounded-xl border border-rose-200 px-4 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50"
+          >
+            Delete
+          </button>
         </div>
-      </div>
+      </article>
     </div>
 
-    <div
-      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
-    >
-      <p class="font-semibold text-slate-800">Your orders</p>
+    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div
+        class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <p class="text-base font-semibold text-slate-950">Your orders</p>
+          <p class="text-sm text-slate-500">Track kit orders and lab status</p>
+        </div>
+        <button
+          @click="showAddKit = !showAddKit"
+          class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          {{ showAddKit ? "Close" : "Add kit" }}
+        </button>
+      </div>
+
+      <div
+        v-if="showAddKit"
+        class="mb-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4"
+      >
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <input
+            v-model="kitForm.name"
+            placeholder="Kit name"
+            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+          />
+          <input
+            v-model="kitForm.badge"
+            placeholder="Badge"
+            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+          />
+          <input
+            v-model="kitForm.price"
+            placeholder="Price"
+            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+          />
+          <input
+            v-model="kitForm.description"
+            placeholder="Description"
+            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+          />
+        </div>
+        <input
+          v-model="markersInput"
+          placeholder="Markers (comma separated)"
+          class="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+        />
+        <div class="mt-3 flex gap-2">
+          <button
+            @click="saveKit"
+            class="rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Save kit
+          </button>
+          <button
+            @click="resetKitForm"
+            class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
       <div v-if="loading" class="space-y-3 animate-pulse">
         <div
           v-for="n in 2"
@@ -65,11 +152,11 @@
         <div
           v-for="o in orders"
           :key="o.id"
-          class="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 p-4 gap-2"
+          class="flex flex-col gap-3 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <p class="font-semibold text-slate-900 text-sm">{{ o.kitName }}</p>
-            <p class="text-xs text-slate-500 mt-1">
+            <p class="text-sm font-semibold text-slate-950">{{ o.kitName }}</p>
+            <p class="mt-1 text-xs text-slate-500">
               Ordered {{ formatDate(o.createdAt) }} · Rs. {{ o.price }}
             </p>
           </div>
@@ -81,17 +168,17 @@
             >
             <button
               @click="cancelOrder(o.id)"
-              class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+              class="rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50"
             >
               Cancel
             </button>
           </div>
         </div>
       </div>
-      <div v-else class="py-8 text-center text-slate-400 text-sm">
+      <div v-else class="py-8 text-center text-sm text-slate-400">
         No orders yet. Order a kit above.
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -99,22 +186,19 @@
 const api = useMedivoyApi();
 const orders = ref<any[]>([]);
 const loading = ref(true);
-const orderingId = ref<number | null>(null);
+const orderingId = ref<number | string | null>(null);
+const showAddKit = ref(false);
+const editingId = ref<number | string | null>(null);
+const markersInput = ref("");
+const kitForm = reactive({
+  name: "",
+  badge: "",
+  price: "",
+  description: "",
+  badgeClass: "bg-slate-100 text-slate-700",
+});
 
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-const statusClass = (s: string) =>
-  s === "completed"
-    ? "bg-emerald-100 text-emerald-700"
-    : s === "dispatched"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-amber-100 text-amber-700";
-
-const kits = [
+const kits = ref<any[]>([
   {
     id: 1,
     name: "Complete Blood Count",
@@ -203,7 +287,20 @@ const kits = [
       "TSH",
     ],
   },
-];
+]);
+
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+const statusClass = (s: string) =>
+  s === "completed"
+    ? "bg-emerald-100 text-emerald-700"
+    : s === "dispatched"
+      ? "bg-blue-100 text-blue-700"
+      : "bg-amber-100 text-amber-700";
 
 onMounted(async () => {
   try {
@@ -228,9 +325,56 @@ const placeOrder = async (kit: any) => {
     orderingId.value = null;
   }
 };
-
 const cancelOrder = async (id: string) => {
   await api.deleteOrder(id);
   orders.value = orders.value.filter((o: any) => o.id !== id);
+};
+
+const resetKitForm = () => {
+  kitForm.name = "";
+  kitForm.badge = "";
+  kitForm.price = "";
+  kitForm.description = "";
+  kitForm.badgeClass = "bg-slate-100 text-slate-700";
+  markersInput.value = "";
+  editingId.value = null;
+};
+const saveKit = () => {
+  const markers = markersInput.value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!kitForm.name || !kitForm.price) return;
+  const payload = {
+    id: editingId.value || Date.now(),
+    name: kitForm.name,
+    badge: kitForm.badge || "Custom",
+    badgeClass: kitForm.badgeClass,
+    price: kitForm.price,
+    description: kitForm.description,
+    markers,
+  };
+  if (editingId.value) {
+    kits.value = kits.value.map((k) =>
+      String(k.id) === String(editingId.value) ? payload : k,
+    );
+  } else {
+    kits.value.unshift(payload);
+  }
+  resetKitForm();
+  showAddKit.value = false;
+};
+const editKit = (kit: any) => {
+  editingId.value = kit.id;
+  kitForm.name = kit.name;
+  kitForm.badge = kit.badge;
+  kitForm.price = kit.price;
+  kitForm.description = kit.description;
+  kitForm.badgeClass = kit.badgeClass || "bg-slate-100 text-slate-700";
+  markersInput.value = (kit.markers || []).join(", ");
+  showAddKit.value = true;
+};
+const deleteKit = (id: number | string) => {
+  kits.value = kits.value.filter((k) => String(k.id) !== String(id));
 };
 </script>

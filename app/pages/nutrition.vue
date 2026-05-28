@@ -1,135 +1,51 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <h3 class="text-2xl font-bold text-slate-900">Nutrition</h3>
-      <p class="text-sm text-slate-500">
-        AI-powered personalised guidance based on your health profile and
-        medical reports.
-      </p>
-    </div>
-
-    <!-- Who is this for -->
-    <div
-      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+    <section
+      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
     >
-      <p class="font-semibold text-slate-800">Who is this for?</p>
-      <div class="flex flex-wrap gap-3">
-        <button
-          type="button"
-          @click="selectMember(null)"
-          :class="[
-            'rounded-full px-4 py-2 text-sm font-medium border transition',
-            selectedMember === null
-              ? 'bg-slate-900 text-white border-slate-900'
-              : 'bg-white text-slate-700 border-slate-300 hover:border-slate-500',
-          ]"
+      <div class="max-w-3xl">
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
         >
-          Myself
-        </button>
-        <button
-          type="button"
-          v-for="m in familyMembers"
-          :key="m.id"
-          @click="selectMember(m)"
-          :class="[
-            'rounded-full px-4 py-2 text-sm font-medium border transition',
-            selectedMember?.id === m.id
-              ? 'bg-slate-900 text-white border-slate-900'
-              : 'bg-white text-slate-700 border-slate-300 hover:border-slate-500',
-          ]"
-        >
-          {{ m.name }}
-          <span class="opacity-60 ml-1 text-xs">{{ m.relation }}</span>
-        </button>
-        <NuxtLink
-          to="/family"
-          class="rounded-full px-4 py-2 text-sm font-medium border border-dashed border-slate-300 text-slate-500 hover:border-slate-500 hover:text-slate-700 transition"
-          >+ Add family member</NuxtLink
-        >
-      </div>
-
-      <!-- Report status for selected person -->
-      <div
-        v-if="reportLoading"
-        class="h-10 rounded-2xl bg-slate-100 animate-pulse"
-      ></div>
-
-      <div
-        v-else-if="memberReport"
-        class="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3"
-      >
-        <svg
-          class="h-4 w-4 text-emerald-600 shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <div class="text-sm text-emerald-800">
-          <span class="font-semibold">{{ memberReport.title }}</span> found — AI
-          will personalise guidance using this report.
-        </div>
-      </div>
-
-      <div
-        v-else
-        class="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3"
-      >
-        <p class="text-sm text-amber-800">
-          No report uploaded for
-          <strong>{{
-            selectedMember ? selectedMember.name : "yourself"
-          }}</strong
-          >. Guidance will be based on profile only.
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          AI nutrition guidance
+        </span>
+        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
+          Personalized diet, vitamin, and habit guidance.
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+          Choose your health goal and generate recommendations using your
+          profile and latest report data. Family member selection has been
+          removed for a cleaner experience.
         </p>
-        <NuxtLink
-          :to="
-            selectedMember
-              ? `/reports/upload?for=${encodeURIComponent(selectedMember.name)}`
-              : '/reports/upload'
-          "
-          class="ml-4 shrink-0 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-200 transition"
-          >Upload report</NuxtLink
-        >
       </div>
-    </div>
+    </section>
 
-    <!-- Health profile -->
-    <div
-      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+    <section
+      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5"
     >
-      <p class="font-semibold text-slate-800">
-        Health profile
-        <span
-          v-if="selectedMember"
-          class="ml-2 text-xs font-normal text-slate-500"
-          >for {{ selectedMember.name }}</span
-        >
-      </p>
-
       <div
-        v-if="selectedMember?.conditions"
-        class="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm"
+        class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
       >
-        <span class="font-medium text-slate-700">Known conditions:</span>
-        <span
-          v-for="(c, i) in splitConditions(selectedMember.conditions)"
-          :key="i"
-          class="rounded-full bg-rose-50 text-rose-700 px-2.5 py-0.5 text-xs font-medium"
-          >{{ c }}</span
+        <div>
+          <h3 class="text-2xl font-bold text-slate-950">Nutrition</h3>
+          <p class="text-sm text-slate-500">
+            AI-powered personalised guidance based on your health profile and
+            medical reports.
+          </p>
+        </div>
+        <div
+          v-if="guidance"
+          class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-100"
         >
+          Guidance generated successfully.
+        </div>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3">
         <select
           v-model="profile.goal"
-          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
         >
           <option value="">Health goal</option>
           <option value="weight_loss">Weight loss</option>
@@ -141,7 +57,7 @@
         </select>
         <select
           v-model="profile.diet"
-          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
         >
           <option value="">Diet type</option>
           <option value="omnivore">Omnivore</option>
@@ -152,7 +68,7 @@
         </select>
         <select
           v-model="profile.region"
-          class="rounded-xl border border-slate-300 px-4 py-3 text-sm w-full"
+          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
         >
           <option value="">Region</option>
           <option value="south_asian">South Asian</option>
@@ -166,11 +82,11 @@
       <button
         @click="generate"
         :disabled="generating"
-        class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 flex items-center gap-2"
+        class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <svg
           v-if="generating"
-          class="animate-spin h-4 w-4"
+          class="h-4 w-4 animate-spin"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -190,29 +106,32 @@
         </svg>
         {{ generating ? "Generating..." : "Generate guidance" }}
       </button>
-      <p v-if="error" class="text-xs text-rose-600">{{ error }}</p>
-    </div>
+      <p
+        v-if="error"
+        class="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+      >
+        {{ error }}
+      </p>
+    </section>
 
-    <!-- Skeleton -->
-    <div v-if="generating" class="space-y-4 animate-pulse">
+    <div v-if="reportLoading" class="space-y-4 animate-pulse">
+      <div class="h-10 rounded-3xl bg-slate-100"></div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="h-48 rounded-3xl bg-slate-100"></div>
         <div class="h-48 rounded-3xl bg-slate-100"></div>
       </div>
       <div class="h-24 rounded-3xl bg-slate-100"></div>
-      <div class="h-32 rounded-3xl bg-slate-100"></div>
     </div>
 
-    <!-- Results -->
     <div v-else-if="guidance" class="space-y-4">
-      <div class="flex items-center gap-2 text-xs text-slate-500">
+      <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <span class="h-2 w-2 rounded-full bg-slate-400"></span>
         Guidance for
         <span class="font-semibold text-slate-700">{{
-          selectedMember ? selectedMember.name : "Myself"
+          guidance.subject || "Myself"
         }}</span>
-        <span v-if="memberReport" class="text-emerald-600"
-          >· personalised from {{ memberReport.title }}</span
+        <span v-if="guidance.sourceReport" class="text-emerald-600"
+          >· personalised from {{ guidance.sourceReport }}</span
         >
         <span v-else>· profile-based</span>
       </div>
@@ -221,7 +140,7 @@
         <div
           class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3"
         >
-          <p class="font-semibold text-slate-800">Eat more of these</p>
+          <p class="font-semibold text-slate-900">Eat more of these</p>
           <ul class="space-y-2">
             <li
               v-for="(f, i) in guidance.eat"
@@ -236,7 +155,7 @@
         <div
           class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3"
         >
-          <p class="font-semibold text-slate-800">Reduce or avoid</p>
+          <p class="font-semibold text-slate-900">Reduce or avoid</p>
           <ul class="space-y-2">
             <li
               v-for="(f, i) in guidance.avoid"
@@ -249,25 +168,27 @@
           </ul>
         </div>
       </div>
+
       <div
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3"
       >
-        <p class="font-semibold text-slate-800">
+        <p class="font-semibold text-slate-900">
           Recommended vitamins and supplements
         </p>
         <div class="flex flex-wrap gap-2">
           <span
             v-for="(v, i) in guidance.vitamins"
             :key="i"
-            class="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-medium"
+            class="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100"
             >{{ v }}</span
           >
         </div>
       </div>
+
       <div
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-2"
       >
-        <p class="font-semibold text-slate-800">Daily habits</p>
+        <p class="font-semibold text-slate-900">Daily habits</p>
         <ul class="space-y-2">
           <li
             v-for="(h, i) in guidance.habits"
@@ -278,6 +199,7 @@
           </li>
         </ul>
       </div>
+
       <p class="text-xs text-slate-400 text-right">
         Powered by Mistral AI · Not a substitute for medical advice
       </p>
@@ -287,75 +209,20 @@
 
 <script setup lang="ts">
 const api = useMedivoyApi();
-
-const familyMembers = ref<any[]>([]);
-const allReports = ref<any[]>([]);
-const selectedMember = ref<any | null>(null); // null = Myself
-const memberReport = ref<any | null>(null);
-const reportLoading = ref(false);
-
-const profile = reactive({ goal: "", diet: "", region: "" });
 const guidance = ref<any | null>(null);
 const generating = ref(false);
+const reportLoading = ref(false);
 const error = ref("");
-
-const splitConditions = (c: string) =>
-  c
-    ? c
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter(Boolean)
-    : [];
-
-// Find the right report for a given person
-// myself  → forMember is null or empty string
-// member  → forMember === member.name (exact, case-insensitive)
-const findReport = (memberName: string | null): any | null => {
-  if (!allReports.value.length) return null;
-  if (!memberName) {
-    // Myself: report where forMember is null, empty, or "myself"
-    return (
-      allReports.value.find(
-        (r: any) =>
-          !r.forMember ||
-          r.forMember === "" ||
-          r.forMember?.toLowerCase() === "myself",
-      ) || null
-    );
-  }
-  return (
-    allReports.value.find(
-      (r: any) => r.forMember?.toLowerCase() === memberName.toLowerCase(),
-    ) || null
-  );
-};
+const profile = reactive({ goal: "", diet: "", region: "" });
 
 onMounted(async () => {
-  // Load family members and all reports in parallel
-  const [members, reports, savedProfile] = await Promise.allSettled([
-    api.getFamilyMembers(),
-    api.getReports(),
-    api.getProfile(),
-  ]);
-
-  if (members.status === "fulfilled") familyMembers.value = members.value || [];
-  if (reports.status === "fulfilled") allReports.value = reports.value || [];
-  if (savedProfile.status === "fulfilled" && savedProfile.value?.goal) {
-    profile.goal = savedProfile.value.goal;
-    profile.diet = savedProfile.value.diet || "";
-    profile.region = savedProfile.value.region || "";
+  const saved = await api.getProfile().catch(() => null);
+  if (saved?.goal) {
+    profile.goal = saved.goal || "";
+    profile.diet = saved.diet || "";
+    profile.region = saved.region || "";
   }
-
-  // Default: Myself, find report for myself
-  memberReport.value = findReport(null);
 });
-
-const selectMember = (member: any | null) => {
-  selectedMember.value = member;
-  guidance.value = null;
-  error.value = "";
-  memberReport.value = findReport(member ? member.name : null);
-};
 
 const generate = async () => {
   if (!profile.goal) {
@@ -364,25 +231,16 @@ const generate = async () => {
   }
   error.value = "";
   generating.value = true;
+  reportLoading.value = true;
   try {
+    const reports = await api.getReports().catch(() => []);
+    const latest =
+      reports.find((r: any) => (r.forMember ? true : true)) || null;
     const payload: Record<string, any> = {
-      goal: profile.goal,
-      diet: profile.diet,
-      region: profile.region,
+      ...profile,
+      reportSummary: latest?.ocrText || latest?.aiSummary || "",
+      sourceReport: latest?.title || "",
     };
-
-    if (selectedMember.value) {
-      payload.memberName = selectedMember.value.name;
-      payload.relation = selectedMember.value.relation || "";
-      payload.age = selectedMember.value.age || "";
-      payload.conditions = selectedMember.value.conditions || "";
-    }
-
-    // Attach report extracted text if available for this person
-    if (memberReport.value?.extractedText) {
-      payload.reportSummary = memberReport.value.extractedText;
-    }
-
     guidance.value = await api.getNutritionGuidance(payload);
     await api.saveProfile({ ...profile });
   } catch (e: any) {
@@ -390,6 +248,7 @@ const generate = async () => {
       e?.data?.message || "Failed to get guidance. Please try again.";
   } finally {
     generating.value = false;
+    reportLoading.value = false;
   }
 };
 </script>

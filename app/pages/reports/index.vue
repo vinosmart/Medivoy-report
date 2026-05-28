@@ -1,43 +1,62 @@
 <template>
   <div class="space-y-6">
-    <div
-      class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+    <section
+      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
     >
-      <div>
-        <h3 class="text-2xl font-bold">Reports</h3>
-        <p class="text-sm text-slate-500">
-          View, manage, and delete uploaded reports.
-        </p>
-      </div>
-      <NuxtLink
-        to="/reports/upload"
-        class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+      <div
+        class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
       >
-        Upload report
-      </NuxtLink>
-    </div>
+        <div class="max-w-2xl">
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            Reports center
+          </span>
+          <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
+            View, manage, and delete uploaded reports.
+          </h3>
+          <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+            Search your reports, open the full analysis, and remove items you no
+            longer need. This view is connected to live user data from your API.
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <NuxtLink
+            to="/reports/upload"
+            class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950! shadow-sm hover:bg-slate-100"
+            >Upload report</NuxtLink
+          >
+          <button
+            @click="loadReports"
+            :disabled="loading"
+            class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-white backdrop-blur hover:bg-white/10 disabled:opacity-60"
+          >
+            {{ loading ? "Refreshing..." : "Refresh" }}
+          </button>
+        </div>
+      </div>
+    </section>
 
-    <div
+    <section
       class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
     >
       <div
-        class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div class="relative w-full sm:max-w-sm">
+        <div class="relative w-full sm:max-w-md">
           <input
             v-model="search"
             type="text"
-            placeholder="Search by title or type"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+            placeholder="Search by title, type or status"
+            class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
           />
         </div>
-        <button
-          @click="loadReports"
-          :disabled="loading"
-          class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {{ loading ? "Refreshing..." : "Refresh" }}
-        </button>
+        <div class="text-sm text-slate-500">
+          {{ filteredReports.length }} report{{
+            filteredReports.length === 1 ? "" : "s"
+          }}
+        </div>
       </div>
 
       <div v-if="loading" class="space-y-3">
@@ -46,43 +65,48 @@
           :key="n"
           class="animate-pulse rounded-2xl border border-slate-200 p-4"
         >
-          <div class="h-4 w-1/3 rounded bg-slate-200"></div>
+          <div class="h-5 w-1/3 rounded bg-slate-200"></div>
           <div class="mt-3 h-3 w-1/4 rounded bg-slate-100"></div>
+          <div class="mt-4 h-10 rounded-xl bg-slate-100"></div>
         </div>
       </div>
 
       <div v-else-if="filteredReports.length" class="space-y-3">
-        <div
+        <article
           v-for="report in filteredReports"
           :key="report.id"
-          class="rounded-2xl border border-slate-200 p-4 transition hover:border-slate-300 hover:bg-slate-50"
+          class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
         >
           <div
-            class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+            class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"
           >
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <p class="truncate text-base font-semibold text-slate-900">
+                <h4 class="truncate text-base font-semibold text-slate-950">
                   {{ report.title }}
-                </p>
+                </h4>
                 <span
                   class="rounded-full px-2.5 py-1 text-xs font-semibold"
                   :class="statusClass(report.status)"
+                  >{{ report.status }}</span
                 >
-                  {{ report.status }}
-                </span>
+                <span
+                  class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"
+                  >{{ report.type?.toUpperCase() }}</span
+                >
               </div>
               <p class="mt-2 text-xs text-slate-500">
-                {{ report.type?.toUpperCase() }} ·
                 {{ formatDate(report.createdAt) }}
               </p>
-              <p class="mt-3 text-sm text-slate-600 line-clamp-2">
+              <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
                 {{ report.aiSummary || "No summary available yet." }}
               </p>
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div class="rounded-2xl bg-slate-100 px-4 py-3 text-center">
+            <div class="flex items-center gap-3">
+              <div
+                class="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-200"
+              >
                 <p class="text-xs text-slate-500">Risk</p>
                 <p
                   class="text-lg font-bold"
@@ -95,10 +119,9 @@
               <div class="flex gap-2">
                 <NuxtLink
                   :to="`/reports/${report.id}`"
-                  class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-white"
+                  class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >View</NuxtLink
                 >
-                  View
-                </NuxtLink>
                 <button
                   @click="deleteReport(report.id)"
                   :disabled="deletingId === report.id"
@@ -109,13 +132,23 @@
               </div>
             </div>
           </div>
-        </div>
+        </article>
       </div>
 
-      <p v-else class="rounded-2xl bg-slate-50 p-8 text-center text-slate-500">
-        {{ search ? "No matching reports found." : "No reports yet." }}
-      </p>
-    </div>
+      <div v-else class="rounded-2xl bg-slate-50 p-10 text-center">
+        <p class="text-sm font-medium text-slate-700">
+          {{ search ? "No matching reports found." : "No reports yet." }}
+        </p>
+        <p class="mt-2 text-sm text-slate-500">
+          Upload a report to see it appear here with AI summary and risk score.
+        </p>
+        <NuxtLink
+          to="/reports/upload"
+          class="mt-4 inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+          >Upload report</NuxtLink
+        >
+      </div>
+    </section>
   </div>
 </template>
 
@@ -132,30 +165,29 @@ const formatDate = (d: string) =>
     day: "numeric",
     year: "numeric",
   });
-
 const filteredReports = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (!q) return reports.value;
-  return reports.value.filter((report) => {
-    return [report.title, report.type, report.status]
+  return reports.value.filter((report) =>
+    [report.title, report.type, report.status]
       .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(q));
-  });
+      .some((v) => String(v).toLowerCase().includes(q)),
+  );
 });
-
-const riskClass = (score?: number) => {
-  if (score == null) return "text-slate-500";
-  if (score >= 60) return "text-rose-600";
-  if (score >= 30) return "text-amber-600";
-  return "text-emerald-600";
-};
-
-const statusClass = (status?: string) => {
-  if (status === "completed") return "bg-emerald-100 text-emerald-700";
-  if (status === "failed") return "bg-rose-100 text-rose-700";
-  return "bg-amber-100 text-amber-700";
-};
-
+const riskClass = (score?: number) =>
+  !score
+    ? "text-slate-500"
+    : score >= 60
+      ? "text-rose-600"
+      : score >= 30
+        ? "text-amber-600"
+        : "text-emerald-600";
+const statusClass = (status?: string) =>
+  status === "completed"
+    ? "bg-emerald-100 text-emerald-700"
+    : status === "failed"
+      ? "bg-rose-100 text-rose-700"
+      : "bg-amber-100 text-amber-700";
 const loadReports = async () => {
   loading.value = true;
   try {
@@ -166,18 +198,15 @@ const loadReports = async () => {
     loading.value = false;
   }
 };
-
 const deleteReport = async (id: string) => {
-  const confirmed = window.confirm("Delete this report?");
-  if (!confirmed) return;
+  if (!window.confirm("Delete this report?")) return;
   deletingId.value = id;
   try {
     await api.deleteReport(id);
-    reports.value = reports.value.filter((report) => report.id !== id);
+    reports.value = reports.value.filter((r) => r.id !== id);
   } finally {
     deletingId.value = null;
   }
 };
-
 onMounted(loadReports);
 </script>

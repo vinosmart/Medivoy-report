@@ -1,139 +1,239 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <h3 class="text-2xl font-bold text-slate-900">Genetics</h3>
-      <p class="text-sm text-slate-500">
-        Enter genetic markers to get a personalised health risk profile.
-      </p>
-    </div>
-
-    <div
-      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+    <section
+      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
     >
-      <p class="font-semibold text-slate-800">Upload DNA report</p>
-      <p class="text-xs text-slate-500">
-        Upload a DNA report PDF or TXT. We extract APOE, MTHFR, FTO, LCT, HFE,
-        and other key variants automatically.
-      </p>
-      <NuxtLink
-        to="/reports/upload"
-        class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
-        >Upload DNA report</NuxtLink
-      >
-    </div>
-
-    <div
-      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
-    >
-      <p class="font-semibold text-slate-800">Or enter variants manually</p>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div v-for="gene in genes" :key="gene.name" class="space-y-1">
-          <label class="text-xs font-medium text-slate-600">{{
-            gene.name
-          }}</label>
-          <select
-            v-model="variants[gene.name]"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
-          >
-            <option value="">Unknown</option>
-            <option v-for="opt in gene.options" :key="opt" :value="opt">
-              {{ opt }}
-            </option>
-          </select>
-        </div>
-      </div>
-      <button
-        @click="analyze"
-        :disabled="saving"
-        class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {{ saving ? "Saving..." : "Analyze variants" }}
-      </button>
-    </div>
-
-    <div v-if="loading" class="space-y-3 animate-pulse">
-      <div class="h-24 rounded-3xl bg-slate-100"></div>
-    </div>
-
-    <div v-else-if="result" class="space-y-4">
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p class="text-xs text-slate-500">Genetic risk score</p>
-          <p
-            class="mt-2 text-3xl font-bold"
-            :class="
-              result.riskScore >= 60
-                ? 'text-rose-600'
-                : result.riskScore >= 30
-                  ? 'text-amber-600'
-                  : 'text-emerald-600'
-            "
-          >
-            {{ result.riskScore }}
-          </p>
-        </div>
-        <div
-          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:col-span-2"
+      <div class="max-w-3xl">
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
         >
-          <p class="text-xs text-slate-500">Summary</p>
-          <p class="mt-2 text-sm leading-6 text-slate-700">
-            {{ result.summary }}
-          </p>
-        </div>
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Genetic risk profiling
+        </span>
+        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
+          Personalised health risk profile from DNA markers.
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+          Upload a DNA report PDF or enter variants manually to get an
+          easy-to-read genetic risk summary and recommendations.
+        </p>
       </div>
-      <div
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3"
-      >
-        <p class="font-semibold text-slate-800">Variant findings</p>
-        <div class="space-y-2">
-          <div
-            v-for="(f, i) in result.findings"
-            :key="i"
-            class="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-          >
-            <div class="flex items-center justify-between">
-              <p class="font-semibold text-slate-800 text-sm">{{ f.label }}</p>
-              <span
-                class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                :class="
-                  f.status === 'high'
-                    ? 'bg-rose-100 text-rose-700'
-                    : f.status === 'low'
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-emerald-100 text-emerald-700'
-                "
-              >
-                {{
-                  f.status === "high"
-                    ? "Elevated risk"
-                    : f.status === "low"
-                      ? "Moderate"
-                      : "Normal"
-                }}
-              </span>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-12">
+      <div class="space-y-6 xl:col-span-5">
+        <div
+          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-base font-semibold text-white">
+                Upload DNA report
+              </p>
+              <p class="mt-1 text-sm text-slate-500">
+                Upload a DNA report PDF or TXT. We extract APOE, MTHFR, FTO,
+                LCT, HFE, and other key variants automatically.
+              </p>
             </div>
-            <p class="text-xs text-slate-500 mt-1">{{ f.value }}</p>
-            <p v-if="f.note" class="text-xs text-slate-600 mt-1">
-              {{ f.note }}
+            <div
+              class="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-2xl"
+            >
+              🧬
+            </div>
+          </div>
+          <NuxtLink
+            to="/reports/upload"
+            class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white! shadow-lg shadow-slate-950/10 hover:bg-slate-800"
+            >Upload DNA report</NuxtLink
+          >
+        </div>
+
+        <div
+          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+        >
+          <div>
+            <p class="text-base font-semibold text-slate-950">
+              Or enter variants manually
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+              Use the dropdowns below to build a quick genetic profile.
             </p>
           </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div v-for="gene in genes" :key="gene.name" class="space-y-1">
+              <label
+                class="text-xs font-medium uppercase tracking-wide text-slate-500"
+                >{{ gene.name }}</label
+              >
+              <select
+                v-model="variants[gene.name]"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
+              >
+                <option value="">Unknown</option>
+                <option v-for="opt in gene.options" :key="opt" :value="opt">
+                  {{ opt }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <button
+            @click="analyze"
+            :disabled="saving"
+            class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/10 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <svg
+              v-if="saving"
+              class="h-4 w-4 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8z"
+              />
+            </svg>
+            {{ saving ? "Saving..." : "Analyze variants" }}
+          </button>
         </div>
       </div>
-      <div
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3"
-      >
-        <p class="font-semibold text-slate-800">Personalised recommendations</p>
-        <ul class="space-y-2">
-          <li
-            v-for="(r, i) in result.recommendations"
-            :key="i"
-            class="text-sm text-slate-700"
+
+      <div class="space-y-6 xl:col-span-7">
+        <div v-if="loading" class="space-y-3 animate-pulse">
+          <div class="h-24 rounded-3xl bg-slate-100"></div>
+        </div>
+
+        <div v-else-if="result" class="space-y-6">
+          <section class="grid gap-4 sm:grid-cols-3">
+            <div
+              class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <p
+                class="text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                Genetic risk score
+              </p>
+              <p
+                class="mt-3 text-4xl font-black"
+                :class="
+                  result.riskScore >= 60
+                    ? 'text-rose-600'
+                    : result.riskScore >= 30
+                      ? 'text-amber-600'
+                      : 'text-emerald-600'
+                "
+              >
+                {{ result.riskScore }}
+              </p>
+              <p class="mt-2 text-xs text-slate-400">
+                Calculated from selected markers
+              </p>
+            </div>
+            <div
+              class="sm:col-span-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <p
+                class="text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                Summary
+              </p>
+              <p class="mt-3 text-sm leading-7 text-slate-700">
+                {{ result.summary }}
+              </p>
+            </div>
+          </section>
+
+          <section
+            class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
           >
-            • {{ r }}
-          </li>
-        </ul>
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-base font-semibold text-slate-950">
+                  Variant findings
+                </p>
+                <p class="mt-1 text-sm text-slate-500">
+                  Each marker is categorized by risk level.
+                </p>
+              </div>
+            </div>
+            <div class="mt-4 space-y-3">
+              <article
+                v-for="(f, i) in result.findings"
+                :key="i"
+                class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div
+                  class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <p class="text-sm font-semibold text-slate-900">
+                    {{ f.label }}
+                  </p>
+                  <span
+                    class="w-fit rounded-full px-2.5 py-1 text-xs font-semibold"
+                    :class="
+                      f.status === 'high'
+                        ? 'bg-rose-100 text-rose-700'
+                        : f.status === 'low'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                    "
+                  >
+                    {{
+                      f.status === "high"
+                        ? "Elevated risk"
+                        : f.status === "low"
+                          ? "Moderate"
+                          : "Normal"
+                    }}
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">{{ f.value }}</p>
+                <p v-if="f.note" class="mt-2 text-xs leading-6 text-slate-600">
+                  {{ f.note }}
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section
+            class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          >
+            <p class="text-base font-semibold text-slate-950">
+              Personalised recommendations
+            </p>
+            <ul class="mt-4 space-y-2">
+              <li
+                v-for="(r, i) in result.recommendations"
+                :key="i"
+                class="flex gap-3 text-sm text-slate-700"
+              >
+                <span
+                  class="mt-2 h-2 w-2 shrink-0 rounded-full bg-cyan-500"
+                ></span>
+                <span>{{ r }}</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <div
+          v-else
+          class="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500 shadow-sm"
+        >
+          Select variants and click
+          <span class="font-semibold text-slate-900">Analyze variants</span> to
+          generate a genetic health profile.
+        </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
