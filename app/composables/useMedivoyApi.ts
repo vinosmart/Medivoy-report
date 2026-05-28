@@ -3,7 +3,7 @@ import { useAuthStore } from '~/stores/auth'
 export const useMedivoyApi = () => {
   const config = useRuntimeConfig()
   const auth = useAuthStore()
-  const baseURL = config.public.apiBase || 'http://localhost:3001/api'
+  const baseURL = config.public.apiBase || 'https://api-geno.medivoy.ae/api'
 
   const headers = (): Record<string, string> => {
     const h: Record<string, string> = {}
