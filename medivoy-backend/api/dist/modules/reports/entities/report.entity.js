@@ -43,16 +43,28 @@ __decorate([
     __metadata("design:type", String)
 ], Report.prototype, "status", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true, type: 'float' }),
     __metadata("design:type", Number)
 ], Report.prototype, "riskScore", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'float' }),
+    __metadata("design:type", Number)
+], Report.prototype, "overallHealthScore", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'float' }),
+    __metadata("design:type", Number)
+], Report.prototype, "confidenceScore", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Report.prototype, "reportType", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true, type: 'text' }),
     __metadata("design:type", String)
 ], Report.prototype, "summary", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
-    __metadata("design:type", Array)
+    __metadata("design:type", Object)
 ], Report.prototype, "recommendations", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
@@ -62,6 +74,46 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
     __metadata("design:type", Array)
 ], Report.prototype, "markers", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "longTermInsights", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "fiveYearAnswers", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Object)
+], Report.prototype, "riskCategories", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "keyInsights", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "positiveFindings", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "criticalFindings", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "missingImportantMarkers", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "patternAnalysis", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "dnaTraits", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, type: 'json' }),
+    __metadata("design:type", Array)
+], Report.prototype, "warnings", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true, type: 'text' }),
     __metadata("design:type", String)

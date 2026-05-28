@@ -5,46 +5,101 @@ export type Marker = {
     unit?: string;
     referenceRange?: string;
 };
-type Finding = {
+export type FindingStatus = 'normal' | 'borderline' | 'mild_high' | 'moderate_high' | 'critical_high' | 'mild_low' | 'critical_low';
+export type Finding = {
     label: string;
-    status: 'high' | 'low' | 'normal';
+    status: FindingStatus;
     value: string;
+    severityScore?: number;
     note?: string;
+    whyItMatters?: string;
+    possibleCauses?: string[];
+    recommendedActions?: string[];
 };
-type AnalyzeResult = {
-    riskScore: number;
+export type PatternInsight = {
+    title: string;
+    severity: 'low' | 'moderate' | 'high';
+    insight: string;
+};
+export type TraitInsight = {
+    trait: string;
+    result: string;
+    basedOn: string[];
+    insight: string;
+};
+export type LongTermRiskInsight = {
+    horizonYears: number;
+    title: string;
+    outlook: 'low' | 'moderate' | 'high';
+    insight: string;
+};
+export type FiveYearAnswer = {
+    year: number;
+    question: string;
+    answer: string;
+    outlook: 'low' | 'moderate' | 'high';
+};
+export type AnalyzeResult = {
+    reportType: 'blood' | 'dna' | 'other';
+    overallHealthScore: number;
+    confidenceScore: number;
     summary: string;
-    recommendations: string[];
+    longTermInsights?: LongTermRiskInsight[];
+    fiveYearAnswers?: FiveYearAnswer[];
+    riskCategories?: Record<string, number>;
+    keyInsights?: string[];
+    positiveFindings?: string[];
+    criticalFindings?: string[];
+    missingImportantMarkers?: string[];
+    patternAnalysis?: PatternInsight[];
+    recommendations: {
+        diet: string[];
+        exercise: string[];
+        sleep: string[];
+        supplements: string[];
+        followUp: string[];
+    };
     findings: Finding[];
+    dnaTraits?: TraitInsight[];
+    warnings?: string[];
 };
 export declare class AiService {
     private configService;
     private mistral;
     constructor(configService: ConfigService);
     analyzeReport(text: string, markers: Marker[], type: string): Promise<AnalyzeResult>;
-    private resolveReportType;
-    private analyzeDnaReport;
-    private analyzeBloodReport;
     private normalizeText;
-    private detectDnaMode;
-    private analyzeDnaWithMistral;
-    private extractDnaFindings;
+    private resolveReportType;
+    private hasBloodSignals;
+    private hasDnaSignals;
+    private callAi;
+    private emptyReport;
+    private analyzeBloodReport;
     private extractBloodMarkers;
-    private buildBloodFindings;
-    private analyzeOtherWithMistral;
-    private extractOtherReportFindings;
-    private makeFinding;
-    private calculateBloodRiskScore;
-    private calculateDnaRiskScore;
-    private calculateOtherRiskScore;
+    private analyzeDnaReport;
+    private analyzeOtherReport;
+    private buildOtherFallback;
+    private buildDefaultFiveYearAnswers;
+    private buildBloodFallbackFindings;
     private buildBloodRecommendations;
-    private buildDnaRecommendations;
-    private buildOtherRecommendations;
-    private generateRecommendationsFromFindings;
-    private sanitizeFindings;
-    private sanitizeRecommendations;
-    private uniqueMarkers;
-    private uniqueFindings;
+    private buildBloodLongTermInsights;
+    private buildBloodKeyInsights;
+    private detectBloodPatterns;
+    private calculateBloodCategoryScores;
+    private calculateWeightedHealthScore;
+    private normalizeFiveYearAnswers;
+    private normalizeFindings;
+    private normalizePatternInsights;
+    private normalizeTraits;
+    private normalizeLongTermInsights;
+    private normalizeRecommendations;
+    private normalizeRiskCategories;
+    private normalizeStringArray;
+    private normalizeStatus;
+    private normalizePatternSeverity;
+    private normalizeOutlook;
+    private getString;
     private toNumber;
+    private uniqueMarkers;
+    private detectMissingMarkers;
 }
-export {};

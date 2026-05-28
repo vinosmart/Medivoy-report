@@ -24,7 +24,7 @@
         <div class="flex gap-3">
           <NuxtLink
             to="/reports/upload"
-            class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950! shadow-sm hover:bg-slate-100"
+            class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm hover:bg-slate-100"
             >Upload report</NuxtLink
           >
           <button
@@ -42,9 +42,9 @@
       class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
     >
       <div
-        class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
       >
-        <div class="relative w-full sm:max-w-md">
+        <div class="relative w-full lg:max-w-md">
           <input
             v-model="search"
             type="text"
@@ -52,10 +52,38 @@
             class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
           />
         </div>
-        <div class="text-sm text-slate-500">
-          {{ filteredReports.length }} report{{
-            filteredReports.length === 1 ? "" : "s"
-          }}
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div
+            class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200"
+          >
+            {{ filteredReports.length }} report{{
+              filteredReports.length === 1 ? "" : "s"
+            }}
+          </div>
+
+          <label
+            class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700"
+          >
+            <input
+              v-model="selectAll"
+              type="checkbox"
+              class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            Select all
+          </label>
+
+          <button
+            @click="bulkDeleteSelected"
+            :disabled="selectedIds.length === 0 || deletingBulk"
+            class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            {{
+              deletingBulk
+                ? "Deleting..."
+                : `Delete selected (${selectedIds.length})`
+            }}
+          </button>
         </div>
       </div>
 
@@ -80,27 +108,35 @@
           <div
             class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"
           >
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <h4 class="truncate text-base font-semibold text-slate-950">
-                  {{ report.title }}
-                </h4>
-                <span
-                  class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="statusClass(report.status)"
-                  >{{ report.status }}</span
-                >
-                <span
-                  class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"
-                  >{{ report.type?.toUpperCase() }}</span
-                >
+            <div class="flex min-w-0 flex-1 items-start gap-3">
+              <input
+                v-model="selectedIds"
+                :value="report.id"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h4 class="truncate text-base font-semibold text-slate-950">
+                    {{ report.title }}
+                  </h4>
+                  <span
+                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    :class="statusClass(report.status)"
+                    >{{ report.status }}</span
+                  >
+                  <span
+                    class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"
+                    >{{ report.type?.toUpperCase() }}</span
+                  >
+                </div>
+                <p class="mt-2 text-xs text-slate-500">
+                  {{ formatDate(report.createdAt) }}
+                </p>
+                <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                  {{ report.aiSummary || "No summary available yet." }}
+                </p>
               </div>
-              <p class="mt-2 text-xs text-slate-500">
-                {{ formatDate(report.createdAt) }}
-              </p>
-              <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                {{ report.aiSummary || "No summary available yet." }}
-              </p>
             </div>
 
             <div class="flex items-center gap-3">
@@ -157,7 +193,9 @@ const api = useMedivoyApi();
 const reports = ref<any[]>([]);
 const loading = ref(true);
 const deletingId = ref<string | null>(null);
+const deletingBulk = ref(false);
 const search = ref("");
+const selectedIds = ref<string[]>([]);
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("en-US", {
@@ -165,6 +203,7 @@ const formatDate = (d: string) =>
     day: "numeric",
     year: "numeric",
   });
+
 const filteredReports = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (!q) return reports.value;
@@ -174,6 +213,21 @@ const filteredReports = computed(() => {
       .some((v) => String(v).toLowerCase().includes(q)),
   );
 });
+
+const selectAll = computed({
+  get: () =>
+    filteredReports.value.length > 0 &&
+    filteredReports.value.every((r) => selectedIds.value.includes(r.id)),
+  set: (value: boolean) => {
+    selectedIds.value = value ? filteredReports.value.map((r) => r.id) : [];
+  },
+});
+
+watch(filteredReports, (items) => {
+  const ids = new Set(items.map((r) => r.id));
+  selectedIds.value = selectedIds.value.filter((id) => ids.has(id));
+});
+
 const riskClass = (score?: number) =>
   !score
     ? "text-slate-500"
@@ -188,6 +242,7 @@ const statusClass = (status?: string) =>
     : status === "failed"
       ? "bg-rose-100 text-rose-700"
       : "bg-amber-100 text-amber-700";
+
 const loadReports = async () => {
   loading.value = true;
   try {
@@ -198,15 +253,34 @@ const loadReports = async () => {
     loading.value = false;
   }
 };
+
 const deleteReport = async (id: string) => {
   if (!window.confirm("Delete this report?")) return;
   deletingId.value = id;
   try {
     await api.deleteReport(id);
     reports.value = reports.value.filter((r) => r.id !== id);
+    selectedIds.value = selectedIds.value.filter((x) => x !== id);
   } finally {
     deletingId.value = null;
   }
 };
+
+const bulkDeleteSelected = async () => {
+  if (!selectedIds.value.length) return;
+  if (!window.confirm(`Delete ${selectedIds.value.length} selected reports?`))
+    return;
+  deletingBulk.value = true;
+  try {
+    for (const id of [...selectedIds.value]) {
+      await api.deleteReport(id);
+      reports.value = reports.value.filter((r) => r.id !== id);
+    }
+    selectedIds.value = [];
+  } finally {
+    deletingBulk.value = false;
+  }
+};
+
 onMounted(loadReports);
 </script>

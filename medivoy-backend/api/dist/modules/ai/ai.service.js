@@ -13,742 +13,350 @@ exports.AiService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const mistralai_1 = require("@mistralai/mistralai");
+const DNA_SYSTEM_PROMPT = `You are a DNA wellness analysis assistant.
+Return ONLY valid JSON. No markdown. No prose outside JSON.
+You must infer structured findings from the provided DNA text and markers.
+If markers exist, you must create findings for them. Do not return empty findings when markers are present.
+Use ONLY the provided text and markers. Do not rely on any static templates, defaults, or hardcoded outcomes.
+Required JSON shape:
+{
+  "reportType": "dna",
+  "overallHealthScore": number,
+  "confidenceScore": number,
+  "summary": string,
+  "longTermInsights": [{ "horizonYears": number, "title": string, "outlook": "low"|"moderate"|"high", "insight": string }],
+  "fiveYearAnswers": [{ "year": number, "question": string, "answer": string, "outlook": "low"|"moderate"|"high" }],
+  "riskCategories": { [key: string]: number },
+  "keyInsights": string[],
+  "positiveFindings": string[],
+  "criticalFindings": string[],
+  "patternAnalysis": [{ "title": string, "severity": "low"|"moderate"|"high", "insight": string }],
+  "recommendations": { "diet": string[], "exercise": string[], "sleep": string[], "supplements": string[], "followUp": string[] },
+  "findings": [{ "label": string, "status": "normal"|"borderline"|"mild_high"|"moderate_high"|"critical_high"|"mild_low"|"critical_low", "value": string, "severityScore": number, "whyItMatters": string, "possibleCauses": string[], "recommendedActions": string[] }],
+  "dnaTraits": [{ "trait": string, "result": string, "basedOn": string[], "insight": string }],
+  "warnings": string[]
+}
+For fiveYearAnswers: generate 5 entries — one per year from year 1 to year 5.
+Each entry must answer: "What should I focus on in year N based on my DNA profile?"
+Be specific to the markers present. Cover cardiovascular, metabolic, micronutrient, and lifestyle dimensions across the 5 years.
+For APOE E3/E4, discuss cardiovascular/LDL tendency.
+For MTHFR C677T heterozygous, discuss folate metabolism support.
+For FTO risk variant, discuss weight regulation tendency.
+For HFE negative, mention no major HFE variant evidence.
+For CYP1A2 slow metabolism variant present, mention caffeine sensitivity and slower metabolism.
+For LCT lactase persistence variant absent, mention lactose intolerance possibility.
+Do not fabricate numeric lab values. No empty arrays unless truly unsupported. Avoid medical diagnosis.`;
+const BLOOD_SYSTEM_PROMPT = `You are a blood report analysis assistant.
+Return ONLY valid JSON. No markdown. No prose outside JSON.
+Use only the provided text and markers.
+Required JSON shape:
+{
+  "reportType": "blood",
+  "overallHealthScore": number,
+  "confidenceScore": number,
+  "summary": string,
+  "longTermInsights": [{ "horizonYears": number, "title": string, "outlook": "low"|"moderate"|"high", "insight": string }],
+  "fiveYearAnswers": [{ "year": number, "question": string, "answer": string, "outlook": "low"|"moderate"|"high" }],
+  "riskCategories": { [key: string]: number },
+  "keyInsights": string[],
+  "positiveFindings": string[],
+  "criticalFindings": string[],
+  "missingImportantMarkers": string[],
+  "patternAnalysis": [{ "title": string, "severity": "low"|"moderate"|"high", "insight": string }],
+  "recommendations": { "diet": string[], "exercise": string[], "sleep": string[], "supplements": string[], "followUp": string[] },
+  "findings": [{ "label": string, "status": "normal"|"borderline"|"mild_high"|"moderate_high"|"critical_high"|"mild_low"|"critical_low", "value": string, "severityScore": number, "whyItMatters": string, "possibleCauses": string[], "recommendedActions": string[] }],
+  "warnings": string[]
+}
+For fiveYearAnswers: generate 5 entries — one per year from year 1 to year 5.
+Each entry answers: "What health priority should I focus on in year N given these blood results?"
+Be specific to the markers and findings present.
+Do not fabricate numeric lab values. No empty arrays unless truly unsupported. Avoid medical diagnosis.`;
+const OTHER_SYSTEM_PROMPT = `You are a clinical document analysis assistant.
+Return ONLY valid JSON. No markdown. No prose outside JSON.
+Analyze the provided report text and generate a useful structured summary.
+Required JSON shape:
+{
+  "reportType": "other",
+  "overallHealthScore": number,
+  "confidenceScore": number,
+  "summary": string,
+  "longTermInsights": [{ "horizonYears": number, "title": string, "outlook": "low"|"moderate"|"high", "insight": string }],
+  "fiveYearAnswers": [{ "year": number, "question": string, "answer": string, "outlook": "low"|"moderate"|"high" }],
+  "riskCategories": { [key: string]: number },
+  "keyInsights": string[],
+  "positiveFindings": string[],
+  "criticalFindings": string[],
+  "patternAnalysis": [{ "title": string, "severity": "low"|"moderate"|"high", "insight": string }],
+  "recommendations": { "diet": string[], "exercise": string[], "sleep": string[], "supplements": string[], "followUp": string[] },
+  "findings": [{ "label": string, "status": "normal"|"borderline"|"mild_high"|"moderate_high"|"critical_high"|"mild_low"|"critical_low", "value": string, "severityScore": number, "whyItMatters": string, "possibleCauses": string[], "recommendedActions": string[] }],
+  "warnings": string[]
+}
+For fiveYearAnswers: generate 5 entries — one per year — covering proactive steps based on this report.
+No empty arrays unless truly unsupported. Avoid medical diagnosis.`;
 let AiService = class AiService {
     constructor(configService) {
         this.configService = configService;
         this.mistral = null;
         const apiKey = this.configService.get('MISTRAL_API_KEY');
-        if (apiKey) {
+        if (apiKey)
             this.mistral = new mistralai_1.Mistral({ apiKey });
-        }
     }
-    async analyzeReport(text, markers, type) {
+    async analyzeReport(text, markers = [], type) {
         const normalizedText = this.normalizeText(text);
-        const requestedType = String(type || '').toLowerCase();
-        const resolvedType = this.resolveReportType(requestedType, normalizedText);
-        if (resolvedType === 'dna') {
-            return this.analyzeDnaReport(normalizedText);
-        }
-        if (resolvedType === 'blood') {
+        const resolvedType = this.resolveReportType(String(type || '').toLowerCase(), normalizedText);
+        if (resolvedType === 'blood')
             return this.analyzeBloodReport(normalizedText, markers);
-        }
-        const mistralOther = await this.analyzeOtherWithMistral(normalizedText);
-        if (mistralOther && mistralOther.findings.length > 0) {
-            return mistralOther;
-        }
-        const otherFindings = this.extractOtherReportFindings(normalizedText);
-        const riskScore = this.calculateOtherRiskScore(otherFindings);
-        const fallbackSummary = otherFindings.length > 0
-            ? `Detected ${otherFindings.length} useful items from this medical document.`
-            : 'This appears to be a medical document, but only limited structured details could be extracted.';
-        const fallbackRecommendations = this.buildOtherRecommendations(normalizedText, otherFindings);
-        return {
-            riskScore,
-            summary: fallbackSummary,
-            recommendations: fallbackRecommendations,
-            findings: otherFindings,
-        };
-    }
-    resolveReportType(type, text) {
-        const lower = text.toLowerCase();
-        if (type === 'dna')
-            return 'dna';
-        if (type === 'blood')
-            return 'blood';
-        if (type === 'other') {
-            if (lower.includes('apoe') ||
-                lower.includes('genotype') ||
-                lower.includes('allele') ||
-                lower.includes('genotyping') ||
-                lower.includes('rs429358') ||
-                lower.includes('rs7412') ||
-                lower.includes('mthfr') ||
-                lower.includes('cyp1a2') ||
-                lower.includes('tcf7l2')) {
-                return 'dna';
-            }
-            return 'other';
-        }
-        if (lower.includes('apoe') ||
-            lower.includes('genotype') ||
-            lower.includes('allele') ||
-            lower.includes('genotyping')) {
-            return 'dna';
-        }
-        if (lower.includes('hemoglobin') ||
-            lower.includes('haemoglobin') ||
-            lower.includes('wbc') ||
-            lower.includes('platelets') ||
-            lower.includes('cholesterol') ||
-            lower.includes('triglycerides') ||
-            lower.includes('vitamin b12') ||
-            lower.includes('vitamin d')) {
-            return 'blood';
-        }
-        return 'other';
-    }
-    async analyzeDnaReport(text) {
-        const dnaMode = this.detectDnaMode(text);
-        if (dnaMode === 'forensic') {
-            return {
-                riskScore: 10,
-                summary: 'This appears to be a paternity or forensic DNA report, not a health genetics report.',
-                recommendations: [
-                    'Health-risk interpretation is not supported for paternity or forensic DNA reports.',
-                    'Upload a wellness or health genetics DNA report for trait-based insights.',
-                ],
-                findings: [],
-            };
-        }
-        const mistralDna = await this.analyzeDnaWithMistral(text);
-        if (mistralDna && mistralDna.findings.length > 0) {
-            return mistralDna;
-        }
-        const dnaFindings = this.extractDnaFindings(text);
-        const riskScore = this.calculateDnaRiskScore(dnaFindings);
-        if (dnaFindings.length === 0) {
-            return {
-                riskScore: 20,
-                summary: 'This looks like a health DNA report, but no supported wellness variants were detected yet.',
-                recommendations: [
-                    'Add variant parsers for APOE, MTHFR, FTO, CYP1A2, HFE, VDR, TCF7L2, LCT and COMT.',
-                    'Use the Genetics page for manual entry until automated DNA parsing is expanded.',
-                ],
-                findings: [],
-            };
-        }
-        const fallbackSummary = `Detected ${dnaFindings.length} DNA-based health findings: ${dnaFindings
-            .map((f) => f.label)
-            .join(', ')}.`;
-        const fallbackRecommendations = this.buildDnaRecommendations(dnaFindings);
-        const aiResult = await this.generateRecommendationsFromFindings('dna', dnaFindings, fallbackSummary, fallbackRecommendations);
-        return {
-            riskScore,
-            summary: aiResult.summary || fallbackSummary,
-            recommendations: aiResult.recommendations?.length
-                ? aiResult.recommendations
-                : fallbackRecommendations,
-            findings: dnaFindings,
-        };
-    }
-    async analyzeBloodReport(text, markers) {
-        const extractedMarkers = markers?.length ? markers : this.extractBloodMarkers(text);
-        const findings = this.buildBloodFindings(extractedMarkers);
-        const riskScore = this.calculateBloodRiskScore(findings);
-        if (findings.length === 0) {
-            return {
-                riskScore: 20,
-                summary: 'No standard health markers were detected in this report. Try uploading a blood panel or lab report.',
-                recommendations: [
-                    'Continue regular preventive screening.',
-                    'Repeat key labs in 8–12 weeks if clinically advised.',
-                ],
-                findings: [],
-            };
-        }
-        const elevatedCount = findings.filter((f) => f.status === 'high').length;
-        const lowCount = findings.filter((f) => f.status === 'low').length;
-        const abnormalLabels = findings
-            .filter((f) => f.status !== 'normal')
-            .map((f) => f.label);
-        const fallbackSummary = abnormalLabels.length
-            ? `Detected ${elevatedCount} elevated and ${lowCount} low markers. ${abnormalLabels.join(', ')} need attention.`
-            : 'Markers were detected and are within the expected range.';
-        const fallbackRecommendations = this.buildBloodRecommendations(findings);
-        const aiResult = await this.generateRecommendationsFromFindings('blood', findings, fallbackSummary, fallbackRecommendations);
-        return {
-            riskScore,
-            summary: aiResult.summary || fallbackSummary,
-            recommendations: aiResult.recommendations?.length
-                ? aiResult.recommendations
-                : fallbackRecommendations,
-            findings,
-        };
+        if (resolvedType === 'dna')
+            return this.analyzeDnaReport(normalizedText, markers);
+        return this.analyzeOtherReport(normalizedText, markers);
     }
     normalizeText(text) {
         return (text || '')
             .replace(/\r/g, '\n')
             .replace(/[|]/g, ' ')
             .replace(/[‐‑–—]/g, '-')
-            .replace(/[“”]/g, '"')
-            .replace(/[‘’]/g, "'")
+            .replace(/[""]/g, '"')
+            .replace(/['']/g, "'")
             .replace(/\t/g, ' ')
             .replace(/ +/g, ' ');
     }
-    detectDnaMode(text) {
-        const forensicHints = [
-            'paternity',
-            'alleged father',
-            'child',
-            'mother',
-            'cpi',
-            'combined paternity index',
-            'probability of paternity',
-            'amelogenin',
-            'd3s1358',
-            'd8s1179',
-            'fga',
-            'vwa',
-            'csf1po',
-            'th01',
-            'tpox',
-            'd18s51',
-            'd21s11',
-        ];
-        return forensicHints.some((term) => text.toLowerCase().includes(term))
-            ? 'forensic'
-            : 'health';
+    resolveReportType(type, text) {
+        const lower = text.toLowerCase();
+        if (type === 'blood')
+            return 'blood';
+        if (type === 'dna')
+            return 'dna';
+        if (this.hasDnaSignals(lower))
+            return 'dna';
+        if (this.hasBloodSignals(lower))
+            return 'blood';
+        return 'other';
     }
-    async analyzeDnaWithMistral(text) {
-        if (!this.mistral || !text.trim())
-            return null;
+    hasBloodSignals(text) {
+        return ['cbc', 'hemoglobin', 'cholesterol', 'vitamin d', 'vitamin b12', 'hba1c', 'glucose', 'creatinine', 'ferritin', 'lipid profile', 'platelets', 'wbc', 'rbc', 'monocytes', 'mch', 'mcv', 'alt', 'ast', 'alkaline phosphatase', 'bilirubin', 'albumin', 'protein', 'ggtp'].some((t) => text.includes(t));
+    }
+    hasDnaSignals(text) {
+        return ['apoe', 'mthfr', 'tcf7l2', 'vdr', 'fto', 'comt', 'actn3', 'ace', 'genotype', 'allele', 'variant', 'heterozygous', 'homozygous'].some((t) => text.includes(t));
+    }
+    async callAi(systemPrompt, payload, fallback) {
+        if (!this.mistral)
+            return fallback;
         try {
             const response = await this.mistral.chat.complete({
                 model: 'mistral-large-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a genetics report analysis assistant. Return only valid JSON with keys: summary, recommendations, findings, riskScore. findings must be an array of objects with keys: label, status, value, note. Use only information present in the report text. If APOE genotype exists, include genotype and risk interpretation. status must be one of high, low, normal.',
-                    },
-                    {
-                        role: 'user',
-                        content: `
-Analyze this genetics report and extract real findings.
-
-Rules:
-- Use only facts present in the text.
-- Do not invent genes or diagnoses.
-- Include genotype names and variant interpretation when available.
-- recommendations must be short, practical, and general wellness follow-up suggestions.
-- riskScore should be conservative and based only on explicit increased-risk wording.
-
-Report text:
-${text.slice(0, 15000)}
-            `.trim(),
-                    },
-                ],
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: JSON.stringify(payload) }],
                 responseFormat: { type: 'json_object' },
             });
             const raw = response.choices?.[0]?.message?.content;
             const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const findings = this.sanitizeFindings(parsed?.findings);
-            const recommendations = this.sanitizeRecommendations(parsed?.recommendations);
-            return {
-                riskScore: typeof parsed?.riskScore === 'number'
-                    ? Math.max(5, Math.min(100, parsed.riskScore))
-                    : this.calculateDnaRiskScore(findings),
-                summary: typeof parsed?.summary === 'string' && parsed.summary.trim()
-                    ? parsed.summary.trim()
-                    : 'Genetic report analyzed.',
-                recommendations: recommendations.length
-                    ? recommendations
-                    : this.buildDnaRecommendations(findings),
-                findings,
-            };
+            if (parsed && typeof parsed === 'object')
+                return parsed;
         }
         catch (error) {
-            console.error('Mistral DNA analysis failed:', error);
-            return null;
+            console.error('AI call failed:', error);
         }
+        return fallback;
     }
-    extractDnaFindings(text) {
-        const findings = [];
-        const lower = text.toLowerCase();
-        const pushIfFound = (label, regexes, status, note, transform) => {
-            for (const regex of regexes) {
-                const match = text.match(regex);
-                if (match) {
-                    findings.push({
-                        label,
-                        status,
-                        value: transform ? transform(match) : (match[1] || '').trim(),
-                        note,
-                    });
-                    return;
-                }
-            }
+    emptyReport(reportType, message) {
+        return {
+            reportType, overallHealthScore: 50, confidenceScore: 0, summary: message,
+            longTermInsights: [], fiveYearAnswers: [], riskCategories: {}, keyInsights: [],
+            positiveFindings: [], criticalFindings: [], missingImportantMarkers: [],
+            patternAnalysis: [], recommendations: { diet: [], exercise: [], sleep: [], supplements: [], followUp: [] },
+            findings: [], warnings: ['Insufficient structured data detected.'],
         };
-        pushIfFound('APOE', [
-            /APOE[^\n:]*[:\-]\s*(e\d\/e\d|E\d\/E\d)/i,
-            /APOE Alzheimer Disease Risk, Genotype\s*\n?\s*(e\d\/e\d|E\d\/E\d)/i,
-        ], 'high', 'Associated with increased LDL and cardiovascular or neurodegenerative risk depending on context.');
-        pushIfFound('MTHFR', [
-            /MTHFR[^\n:]*[:\-]\s*(C677T(?:\s+heterozygous)?)/i,
-            /MTHFR[^\n]*?(C677T)/i,
-        ], 'low', 'Reduced folate metabolism; methylfolate may be preferred.');
-        if (lower.includes('fto')) {
-            const match = text.match(/FTO[^\n:]*[:\-]\s*(AA|risk variant present)/i);
-            findings.push({
-                label: 'FTO',
-                status: 'high',
-                value: match?.[1]?.trim() || 'Risk variant present',
-                note: 'Associated with increased obesity and appetite risk.',
-            });
+    }
+    async analyzeBloodReport(text, markers) {
+        if (!text.trim() && (!markers || markers.length === 0)) {
+            return {
+                ...this.emptyReport('blood', 'Insufficient data provided to analyze the blood report. No markers or text were available for interpretation.'),
+                recommendations: { diet: [], exercise: [], sleep: [], supplements: [], followUp: ['Provide a complete blood report with markers for accurate analysis.', 'Consult a healthcare provider for a comprehensive evaluation.'] },
+                missingImportantMarkers: ['Hemoglobin', 'WBC', 'RBC', 'Platelets'],
+            };
         }
-        if (lower.includes('cyp1a2')) {
-            const match = text.match(/CYP1A2[^\n:]*[:\-]\s*(slow metabolism variant present|slow metabol(?:ism|izer)?|AC|CC)/i);
-            findings.push({
-                label: 'CYP1A2',
-                status: 'high',
-                value: match?.[1]?.trim() || 'Slow metabolism variant present',
-                note: 'Associated with slower caffeine metabolism.',
-            });
-        }
-        if (lower.includes('hfe')) {
-            const match = text.match(/HFE[^\n:]*[:\-]\s*(H63D(?:\s+heterozygous|\s+carrier)?|negative)/i);
-            findings.push({
-                label: 'HFE',
-                status: 'normal',
-                value: match?.[1]?.trim() || 'H63D carrier',
-                note: 'Monitor iron and ferritin levels periodically.',
-            });
-        }
-        if (lower.includes('vdr')) {
-            const match = text.match(/VDR[^\n:]*[:\-]\s*(low absorption|BsmI\s*[-—]?\s*bb genotype)/i);
-            findings.push({
-                label: 'VDR',
-                status: 'low',
-                value: match?.[1]?.trim() || 'Low absorption',
-                note: 'Reduced Vitamin D absorption; supplementation may help.',
-            });
-        }
-        if (lower.includes('tcf7l2')) {
-            const match = text.match(/TCF7L2[^\n:]*[:\-]\s*(CT genotype|CT)/i);
-            findings.push({
-                label: 'TCF7L2',
-                status: 'high',
-                value: match?.[1]?.replace(/ genotype/i, '').trim() || 'CT',
-                note: 'Associated with increased type 2 diabetes risk.',
-            });
-        }
-        if (lower.includes('lct')) {
-            const match = text.match(/LCT[^\n:]*[:\-]\s*(partial tolerance|lactase persistence variant absent|C\/T heterozygous)/i);
-            findings.push({
-                label: 'LCT',
-                status: 'low',
-                value: match?.[1]?.trim() || 'Partial tolerance',
-                note: 'May indicate partial lactase persistence or lactose sensitivity.',
-            });
-        }
-        if (lower.includes('comt')) {
-            const match = text.match(/COMT[^\n:]*[:\-]\s*([^\n]+)/i);
-            findings.push({
-                label: 'COMT',
-                status: 'normal',
-                value: match?.[1]?.trim() || 'Variant detected',
-                note: 'COMT may influence stress response and catecholamine metabolism.',
-            });
-        }
-        if (lower.includes('alzheimer')) {
-            findings.push({
-                label: 'Alzheimer risk context',
-                status: 'high',
-                value: 'Present',
-                note: 'The report mentions increased Alzheimer disease risk context.',
-            });
-        }
-        return this.uniqueFindings(findings);
+        const extractedMarkers = markers?.length ? markers : this.extractBloodMarkers(text);
+        const ai = await this.callAi(BLOOD_SYSTEM_PROMPT, { reportType: 'blood', text, markers: extractedMarkers }, null);
+        const fallbackFindings = this.buildBloodFallbackFindings(extractedMarkers);
+        const findings = this.normalizeFindings(ai?.findings) ?? fallbackFindings;
+        const recommendations = this.normalizeRecommendations(ai?.recommendations) ?? this.buildBloodRecommendations(findings);
+        const longTermInsights = this.normalizeLongTermInsights(ai?.longTermInsights) ?? this.buildBloodLongTermInsights(findings);
+        const fiveYearAnswers = this.normalizeFiveYearAnswers(ai?.fiveYearAnswers) ?? this.buildDefaultFiveYearAnswers('blood', findings);
+        return {
+            reportType: 'blood',
+            overallHealthScore: this.toNumber(ai?.overallHealthScore) ?? this.calculateWeightedHealthScore(findings),
+            confidenceScore: this.toNumber(ai?.confidenceScore) ?? 90,
+            summary: this.getString(ai?.summary) || `Blood report analyzed with ${findings.length} findings.`,
+            longTermInsights, fiveYearAnswers,
+            riskCategories: this.normalizeRiskCategories(ai?.riskCategories) ?? this.calculateBloodCategoryScores(findings),
+            keyInsights: this.normalizeStringArray(ai?.keyInsights) ?? this.buildBloodKeyInsights(findings),
+            positiveFindings: this.normalizeStringArray(ai?.positiveFindings) ?? findings.filter((f) => f.status === 'normal').slice(0, 5).map((f) => `${f.label} is within expected range.`),
+            criticalFindings: this.normalizeStringArray(ai?.criticalFindings) ?? findings.filter((f) => ['moderate_high', 'critical_high', 'critical_low'].includes(f.status)).map((f) => `${f.label} requires attention.`),
+            missingImportantMarkers: this.normalizeStringArray(ai?.missingImportantMarkers) ?? this.detectMissingMarkers(extractedMarkers),
+            patternAnalysis: this.normalizePatternInsights(ai?.patternAnalysis) ?? this.detectBloodPatterns(findings),
+            recommendations, findings,
+            warnings: this.normalizeStringArray(ai?.warnings) ?? ['Blood insights are educational and not a medical diagnosis.'],
+        };
     }
     extractBloodMarkers(text) {
         const aliases = {
-            WBC: ['white blood cell', 'wbc', 'total leucocyte count', 'tlc'],
-            RBC: ['red blood cell', 'rbc'],
-            Hemoglobin: ['hemoglobin', 'haemoglobin', 'hb', 'hgb'],
-            Hematocrit: ['hematocrit', 'pcv', 'hct'],
-            Platelets: ['platelets', 'platelet count'],
-            Cholesterol: ['total cholesterol', 'cholesterol'],
-            'LDL Cholesterol': ['ldl cholesterol', 'ldl'],
-            'HDL Cholesterol': ['hdl cholesterol', 'hdl'],
-            Triglycerides: ['triglycerides', 'triglyceride', 'tg'],
-            Glucose: ['glucose', 'fasting glucose', 'blood sugar', 'fbs', 'fasting blood sugar'],
-            'Vitamin D': ['vitamin d', '25-oh vitamin d', '25 hydroxy vitamin d'],
-            'Vitamin B12': ['vitamin b12', 'b12'],
-            'hs-CRP': ['hs-crp', 'hs crp', 'crp'],
+            Hemoglobin: ['hemoglobin', 'haemoglobin'], WBC: ['wbc', 'white blood cell', 'total leucocyte count', 'tlc'],
+            RBC: ['rbc', 'red blood cell'], Platelets: ['platelets', 'platelet count'], Neutrophils: ['neutrophils'],
+            Lymphocytes: ['lymphocytes'], Monocytes: ['monocytes'], Eosinophils: ['eosinophils'], Basophils: ['basophils'],
+            MCV: ['mcv'], MCH: ['mch'], MCHC: ['mchc'], RDW: ['rdw'], Glucose: ['glucose', 'blood sugar'], HbA1c: ['hba1c'],
+            Cholesterol: ['cholesterol'], 'LDL Cholesterol': ['ldl'], 'HDL Cholesterol': ['hdl'], Triglycerides: ['triglycerides'],
+            AST: ['ast', 'sgot'], ALT: ['alt', 'sgpt'], GGTP: ['ggtp', 'ggt'], 'Alkaline Phosphatase': ['alkaline phosphatase', 'alp'],
+            Bilirubin: ['bilirubin'], Albumin: ['albumin'], 'Total Protein': ['total protein', 'protein'],
+            Creatinine: ['creatinine'], Ferritin: ['ferritin'], 'Vitamin D': ['vitamin d'], 'Vitamin B12': ['vitamin b12'], TSH: ['tsh'],
         };
-        const lines = text
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean);
+        const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
         const markers = [];
-        for (const [name, possibleLabels] of Object.entries(aliases)) {
+        for (const [name, labels] of Object.entries(aliases)) {
             for (const line of lines) {
-                const normalizedLine = line.toLowerCase();
-                if (!possibleLabels.some((label) => normalizedLine.includes(label))) {
+                const lower = line.toLowerCase();
+                if (!labels.some((l) => lower.includes(l)))
                     continue;
-                }
-                const match = line.match(/[:\-]\s*([<>]?[=]?\s*\d+(?:\.\d+)?)\s*([A-Za-z%/0-9.-]+)/);
+                const match = line.match(/([<>]?[=]?\s*\d+(?:\.\d+)?(?:\s*[-–]\s*\d+(?:\.\d+)?)?)\s*([A-Za-z%/()0-9.-]+)?/);
                 if (match) {
-                    markers.push({
-                        name,
-                        value: match[1].replace(/\s+/g, ''),
-                        unit: match[2],
-                    });
-                    break;
-                }
-                const looseMatch = line.match(/\b(\d+(?:\.\d+)?)\s*([A-Za-z%/0-9.-]+)/);
-                if (looseMatch) {
-                    markers.push({
-                        name,
-                        value: looseMatch[1],
-                        unit: looseMatch[2],
-                    });
+                    markers.push({ name, value: match[1].replace(/\s+/g, ' ').trim(), unit: match[2] || '' });
                     break;
                 }
             }
         }
         return this.uniqueMarkers(markers);
     }
-    buildBloodFindings(markers) {
-        return markers.map((marker) => {
-            const numericValue = this.toNumber(marker.value);
-            const value = `${marker.value} ${marker.unit || ''}`.trim();
-            switch (marker.name) {
-                case 'WBC':
-                    return this.makeFinding(marker.name, numericValue, value, 4.0, 11.0);
-                case 'RBC':
-                    return this.makeFinding(marker.name, numericValue, value, 4.5, 6.0);
-                case 'Hemoglobin':
-                    return this.makeFinding(marker.name, numericValue, value, 13.5, 17.5, 'Low hemoglobin may suggest anaemia or iron/B12 deficiency.');
-                case 'Hematocrit':
-                    return this.makeFinding(marker.name, numericValue, value, 40, 52);
-                case 'Platelets':
-                    return this.makeFinding(marker.name, numericValue, value, 150, 450);
-                case 'Cholesterol':
-                    return this.makeFinding(marker.name, numericValue, value, 0, 200, undefined, 'Total cholesterol above 200 mg/dL is elevated.');
-                case 'LDL Cholesterol':
-                    return this.makeFinding(marker.name, numericValue, value, 0, 100, undefined, 'LDL should be kept under 100 mg/dL.');
-                case 'HDL Cholesterol':
-                    return this.makeFinding(marker.name, numericValue, value, 60, 1000, 'HDL below 60 mg/dL is considered low.');
-                case 'Triglycerides':
-                    return this.makeFinding(marker.name, numericValue, value, 0, 150);
-                case 'Glucose':
-                    return this.makeFinding(marker.name, numericValue, value, 70, 99);
-                case 'Vitamin D':
-                    return this.makeFinding(marker.name, numericValue, value, 30, 100, 'Vitamin D below 30 ng/mL is insufficient.');
-                case 'Vitamin B12':
-                    return this.makeFinding(marker.name, numericValue, value, 200, 900, 'Vitamin B12 below 200 pg/mL is low.');
-                case 'hs-CRP':
-                    return this.makeFinding(marker.name, numericValue, value, 0, 3, undefined, 'hs-CRP above 3 mg/L suggests elevated inflammation.');
-                default:
-                    return { label: marker.name, status: 'normal', value };
-            }
-        });
+    async analyzeDnaReport(text, markers = []) {
+        const ai = await this.callAi(DNA_SYSTEM_PROMPT, { reportType: 'dna', text, markers }, null);
+        const findings = this.normalizeFindings(ai?.findings) ?? [];
+        const traits = this.normalizeTraits(ai?.dnaTraits) ?? [];
+        const longTerm = this.normalizeLongTermInsights(ai?.longTermInsights) ?? [];
+        const fiveYearAnswers = this.normalizeFiveYearAnswers(ai?.fiveYearAnswers) ?? this.buildDefaultFiveYearAnswers('dna', findings);
+        const recommendations = this.normalizeRecommendations(ai?.recommendations) ?? { diet: [], exercise: [], sleep: [], supplements: [], followUp: [] };
+        return {
+            reportType: 'dna', overallHealthScore: this.toNumber(ai?.overallHealthScore) ?? 70, confidenceScore: this.toNumber(ai?.confidenceScore) ?? 90,
+            summary: this.getString(ai?.summary) || 'DNA wellness analysis completed.',
+            longTermInsights: longTerm, fiveYearAnswers,
+            riskCategories: this.normalizeRiskCategories(ai?.riskCategories) ?? {},
+            keyInsights: this.normalizeStringArray(ai?.keyInsights) ?? [],
+            positiveFindings: this.normalizeStringArray(ai?.positiveFindings) ?? [],
+            criticalFindings: this.normalizeStringArray(ai?.criticalFindings) ?? [],
+            patternAnalysis: this.normalizePatternInsights(ai?.patternAnalysis) ?? [],
+            recommendations, findings, dnaTraits: traits,
+            warnings: this.normalizeStringArray(ai?.warnings) ?? ['DNA insights are wellness-focused and not disease diagnosis.'],
+        };
     }
-    async analyzeOtherWithMistral(text) {
-        if (!this.mistral || !text.trim())
-            return null;
-        try {
-            const response = await this.mistral.chat.complete({
-                model: 'mistral-large-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a medical document analysis assistant. Return only valid JSON with keys: documentType, summary, recommendations, findings, riskScore. findings must be an array of objects with keys: label, status, value, note. Extract real information from the report text. Do not invent facts. status must be one of high, low, normal.',
-                    },
-                    {
-                        role: 'user',
-                        content: `
-Analyze this medical document and extract the real findings.
-
-Rules:
-- Use only the information present in the text.
-- Prefer clinically meaningful findings over generic categories.
-- If the report contains genotype or allele information, include it explicitly.
-- recommendations must be short, practical, and generic, not prescriptions.
-- riskScore should be conservative and based only on clearly stated elevated risk language in the report.
-
-Document text:
-${text.slice(0, 15000)}
-            `.trim(),
-                    },
-                ],
-                responseFormat: { type: 'json_object' },
-            });
-            const raw = response.choices?.[0]?.message?.content;
-            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const findings = this.sanitizeFindings(parsed?.findings);
-            const recommendations = this.sanitizeRecommendations(parsed?.recommendations);
-            return {
-                riskScore: typeof parsed?.riskScore === 'number'
-                    ? Math.max(5, Math.min(100, parsed.riskScore))
-                    : this.calculateOtherRiskScore(findings),
-                summary: typeof parsed?.summary === 'string' && parsed.summary.trim()
-                    ? parsed.summary.trim()
-                    : 'Medical document analyzed.',
-                recommendations: recommendations.length
-                    ? recommendations
-                    : this.buildOtherRecommendations(text, findings),
-                findings,
-            };
+    async analyzeOtherReport(text, markers = []) {
+        if (!text.trim() && (!markers || markers.length === 0)) {
+            return this.emptyReport('other', 'Insufficient data provided to analyze the document.');
         }
-        catch (error) {
-            console.error('Mistral other-report analysis failed:', error);
-            return null;
-        }
+        const ai = await this.callAi(OTHER_SYSTEM_PROMPT, { reportType: 'other', text, markers }, null);
+        const fallback = this.buildOtherFallback(text);
+        const fiveYearAnswers = this.normalizeFiveYearAnswers(ai?.fiveYearAnswers) ?? fallback.fiveYearAnswers;
+        return {
+            reportType: 'other',
+            overallHealthScore: this.toNumber(ai?.overallHealthScore) ?? fallback.overallHealthScore,
+            confidenceScore: this.toNumber(ai?.confidenceScore) ?? fallback.confidenceScore,
+            summary: this.getString(ai?.summary) || fallback.summary,
+            longTermInsights: this.normalizeLongTermInsights(ai?.longTermInsights) ?? fallback.longTermInsights,
+            fiveYearAnswers,
+            recommendations: this.normalizeRecommendations(ai?.recommendations) ?? fallback.recommendations,
+            findings: this.normalizeFindings(ai?.findings) ?? fallback.findings,
+            keyInsights: this.normalizeStringArray(ai?.keyInsights) ?? fallback.keyInsights,
+            positiveFindings: this.normalizeStringArray(ai?.positiveFindings) ?? fallback.positiveFindings,
+            criticalFindings: this.normalizeStringArray(ai?.criticalFindings) ?? fallback.criticalFindings,
+            patternAnalysis: this.normalizePatternInsights(ai?.patternAnalysis) ?? fallback.patternAnalysis,
+            riskCategories: this.normalizeRiskCategories(ai?.riskCategories) ?? fallback.riskCategories,
+            warnings: this.normalizeStringArray(ai?.warnings) ?? fallback.warnings,
+        };
     }
-    extractOtherReportFindings(text) {
-        const findings = [];
+    buildOtherFallback(text) {
         const lower = text.toLowerCase();
-        const keywordGroups = [
-            {
-                label: 'Diagnosis',
-                patterns: ['diagnosis', 'diagnosed with', 'impression', 'assessment'],
-                note: 'A diagnosis or clinical impression is mentioned in this document.',
-            },
-            {
-                label: 'Treatment',
-                patterns: ['treatment', 'treated with', 'therapy', 'management plan'],
-                note: 'Treatment details are mentioned.',
-            },
-            {
-                label: 'Medication',
-                patterns: ['tablet', 'capsule', 'mg', 'medicine', 'medication', 'prescribed'],
-                note: 'Medication or prescription details are present.',
-            },
-            {
-                label: 'Procedure',
-                patterns: ['procedure', 'surgery', 'operative', 'biopsy', 'scan', 'mri', 'ct', 'ultrasound'],
-                note: 'A procedure or imaging study is mentioned.',
-            },
-            {
-                label: 'Follow-up',
-                patterns: ['follow up', 'follow-up', 'review after', 'review in', 'next visit', 'revisit'],
-                note: 'Follow-up advice is present.',
-            },
-            {
-                label: 'Advice',
-                patterns: ['advice', 'recommended', 'instructions', 'lifestyle', 'diet'],
-                note: 'General advice or care instructions are included.',
-            },
+        const isLft = lower.includes('liver function') || lower.includes('lft') || lower.includes('liver panel');
+        const hasBilirubin = lower.includes('bilirubin');
+        const hasAltAst = lower.includes('ast') || lower.includes('alt') || lower.includes('sgot') || lower.includes('sgpt');
+        const findings = [];
+        if (hasAltAst)
+            findings.push({ label: 'Liver Enzymes', status: 'normal', value: 'AST/ALT mentioned in the report text', severityScore: 6, whyItMatters: 'Liver enzymes help assess liver cell irritation or injury.', possibleCauses: ['Routine liver function evaluation'], recommendedActions: ['Review exact values with a clinician.'] });
+        if (hasBilirubin)
+            findings.push({ label: 'Bilirubin Panel', status: 'normal', value: 'Bilirubin mentioned in the report text', severityScore: 5, whyItMatters: 'Bilirubin helps evaluate liver and bile flow function.', possibleCauses: ['Routine liver panel'], recommendedActions: ['Correlate with the report\'s exact numeric values.'] });
+        return {
+            reportType: 'other', overallHealthScore: 70, confidenceScore: text.trim() ? 70 : 0,
+            summary: isLft ? 'Liver function test report with liver enzymes, bilirubin, proteins, and interpretive notes.' : 'Document analyzed with available text.',
+            longTermInsights: [{ horizonYears: 1, title: 'Short-term review', outlook: 'low', insight: 'Follow-up depends on exact lab values and clinical context.' }],
+            fiveYearAnswers: this.buildDefaultFiveYearAnswers('other', findings),
+            recommendations: { diet: ['Follow a balanced diet if liver health support is needed.', 'Limit alcohol if advised.'], exercise: ['Maintain regular physical activity.'], sleep: ['Keep a stable sleep schedule.'], supplements: ['Use supplements only if prescribed.'], followUp: ['Review the report with a healthcare provider.', 'Confirm numeric values and reference ranges from the original PDF.'] },
+            findings, keyInsights: ['Compatible with a liver function report.', 'Interpretation depends on exact lab values and reference ranges.'],
+            positiveFindings: ['The document includes interpretive notes from the laboratory.'],
+            criticalFindings: [],
+            patternAnalysis: [{ title: 'Report Type Pattern', severity: 'low', insight: 'This appears to be a liver panel/LFT report with narrative comments.' }],
+            riskCategories: { liverHealth: 60, followUpNeed: 55 },
+            warnings: ['Analysis is best when the PDF text includes clearly extracted numeric results.'],
+        };
+    }
+    buildDefaultFiveYearAnswers(reportType, findings) {
+        const base = [
+            { year: 1, question: 'What should I focus on in Year 1?', answer: 'Establish baseline habits: consistent diet, regular exercise, and annual lab follow-up.', outlook: 'low' },
+            { year: 2, question: 'What should I focus on in Year 2?', answer: 'Review your first-year labs and adjust diet or supplement plan based on the results.', outlook: 'low' },
+            { year: 3, question: 'What should I focus on in Year 3?', answer: 'Strengthen cardiovascular and metabolic health with consistent aerobic activity and stress management.', outlook: 'moderate' },
+            { year: 4, question: 'What should I focus on in Year 4?', answer: 'Reassess micronutrient levels (Vitamin D, B12, iron) and optimize supplementation accordingly.', outlook: 'low' },
+            { year: 5, question: 'What should I focus on in Year 5?', answer: 'Conduct a comprehensive health review. Combine all prior reports for trend analysis with your healthcare provider.', outlook: 'low' },
         ];
-        for (const group of keywordGroups) {
-            if (group.patterns.some((p) => lower.includes(p))) {
-                findings.push({
-                    label: group.label,
-                    status: 'normal',
-                    value: 'Detected',
-                    note: group.note,
-                });
-            }
-        }
-        return this.uniqueFindings(findings);
+        return base;
     }
-    makeFinding(label, numericValue, value, min, max, lowNote, highNote) {
-        if (Number.isNaN(numericValue)) {
-            return { label, status: 'normal', value };
-        }
-        if (numericValue < min) {
-            return {
-                label,
-                status: 'low',
-                value,
-                note: lowNote,
-            };
-        }
-        if (numericValue > max) {
-            return {
-                label,
-                status: 'high',
-                value,
-                note: highNote,
-            };
-        }
-        return { label, status: 'normal', value };
-    }
-    calculateBloodRiskScore(findings) {
-        let score = 20;
-        for (const finding of findings) {
-            if (finding.status === 'high')
-                score += 12;
-            if (finding.status === 'low')
-                score += 8;
-        }
-        return Math.min(score, 100);
-    }
-    calculateDnaRiskScore(findings) {
-        let score = 20;
-        for (const finding of findings) {
-            if (finding.status === 'high')
-                score += 15;
-            if (finding.status === 'low')
-                score += 8;
-            if (finding.status === 'normal')
-                score += 3;
-        }
-        return Math.min(score, 100);
-    }
-    calculateOtherRiskScore(findings) {
-        if (!findings.length)
-            return 15;
-        return Math.min(40, 15 + findings.length * 4);
+    buildBloodFallbackFindings(markers) {
+        return markers.map((marker) => ({ label: marker.name, status: 'normal', value: `${marker.value}${marker.unit ? ` ${marker.unit}` : ''}`.trim(), severityScore: 5, whyItMatters: 'This marker is part of the CBC or blood chemistry panel.', possibleCauses: ['Routine blood testing'], recommendedActions: ['Correlate with the reference range and clinical context.'] }));
     }
     buildBloodRecommendations(findings) {
-        const recommendations = [
-            findings.some((f) => f.label === 'Hemoglobin' && f.status === 'low')
-                ? 'Increase iron-rich foods (spinach, lentils, red meat) and check for B12/folate.'
-                : '',
-            findings.some((f) => f.label === 'Cholesterol' && f.status === 'high') ||
-                findings.some((f) => f.label === 'LDL Cholesterol' && f.status === 'high')
-                ? 'Reduce saturated fat, increase fibre and omega-3 intake.'
-                : '',
-            findings.some((f) => f.label === 'Vitamin D' && f.status === 'low')
-                ? 'Supplement with Vitamin D3 (1000–2000 IU/day) and increase sun exposure.'
-                : '',
-            findings.some((f) => f.label === 'Vitamin B12' && f.status === 'low')
-                ? 'Start Vitamin B12 supplementation or increase dairy/meat intake.'
-                : '',
-            findings.some((f) => f.label === 'hs-CRP' && f.status === 'high')
-                ? 'Reduce processed foods, increase anti-inflammatory foods (turmeric, berries, fish).'
-                : '',
-            findings.some((f) => f.status === 'high')
-                ? 'Discuss elevated markers with a clinician promptly.'
-                : '',
-            findings.some((f) => f.status === 'low')
-                ? 'Review micronutrient deficiencies and consider supplementation.'
-                : '',
-            'Repeat key labs in 8–12 weeks if clinically advised.',
-        ].filter(Boolean);
-        return recommendations.length
-            ? recommendations
-            : ['Continue regular preventive screening.'];
+        const rec = { diet: ['Eat mostly whole foods and fiber.'], exercise: ['Aim for regular weekly activity.'], sleep: ['Maintain consistent sleep.'], supplements: ['Discuss supplements with a healthcare provider.'], followUp: ['Repeat abnormal labs if advised.'] };
+        if (findings.some((f) => ['mild_high', 'moderate_high', 'critical_high'].includes(f.status)))
+            rec.followUp.push('Track the abnormal markers over time.');
+        return rec;
     }
-    buildDnaRecommendations(findings) {
-        const recommendations = [
-            findings.some((f) => f.label === 'APOE')
-                ? 'Review the APOE result with a clinician or genetics counselor in the right clinical context.'
-                : '',
-            findings.some((f) => f.label === 'Alzheimer risk context')
-                ? 'Do not interpret APOE status alone as a diagnosis; combine it with clinical evaluation.'
-                : '',
-            findings.some((f) => f.label === 'MTHFR')
-                ? 'Prefer methylfolate and methylcobalamin over standard folic acid supplements.'
-                : '',
-            findings.some((f) => f.label === 'FTO')
-                ? 'Focus on portion control, protein-rich meals, and regular exercise.'
-                : '',
-            findings.some((f) => f.label === 'CYP1A2')
-                ? 'Limit caffeine intake, especially late in the day.'
-                : '',
-            findings.some((f) => f.label === 'VDR')
-                ? 'Check Vitamin D levels and consider D3 supplementation.'
-                : '',
-            findings.some((f) => f.label === 'HFE')
-                ? 'Monitor ferritin and iron studies periodically.'
-                : '',
-            findings.some((f) => f.label === 'TCF7L2')
-                ? 'Monitor HbA1c and fasting glucose regularly and reduce refined carbohydrates.'
-                : '',
-        ].filter(Boolean);
-        return recommendations.length
-            ? recommendations
-            : ['Use the Genetics page for manual review until more DNA variants are supported.'];
+    buildBloodLongTermInsights(findings) {
+        return findings.length ? [{ horizonYears: 1, title: 'Short-term blood outlook', outlook: 'low', insight: 'Most blood markers need trend-based interpretation with the exact reference ranges.' }] : [];
     }
-    buildOtherRecommendations(text, findings) {
-        const lower = text.toLowerCase();
-        const recommendations = [
-            findings.some((f) => f.label === 'Medication')
-                ? 'Review prescribed medicines with a clinician or pharmacist before making changes.'
-                : '',
-            findings.some((f) => f.label === 'Follow-up')
-                ? 'Keep the recommended follow-up appointment and carry prior reports for comparison.'
-                : '',
-            findings.some((f) => f.label === 'Procedure')
-                ? 'Store this procedure or imaging report with related clinical notes for future review.'
-                : '',
-            lower.includes('diet') || lower.includes('lifestyle')
-                ? 'Follow the lifestyle and diet instructions mentioned in the report consistently.'
-                : '',
-            'Consult the treating clinician for interpretation in the context of symptoms and medical history.',
-        ].filter(Boolean);
-        return recommendations.length
-            ? recommendations
-            : ['Keep this document for clinical follow-up and future comparison.'];
+    buildBloodKeyInsights(findings) { return findings.slice(0, 5).map((f) => `${f.label} was captured from the blood report.`); }
+    detectBloodPatterns(findings) {
+        const patterns = [];
+        if (findings.some((f) => f.label === 'Hemoglobin') && findings.some((f) => f.label === 'RBC'))
+            patterns.push({ title: 'CBC Interpretation', severity: 'low', insight: 'Hemoglobin and RBC values should be reviewed together with the reference range.' });
+        return patterns;
     }
-    async generateRecommendationsFromFindings(type, findings, fallbackSummary, fallbackRecommendations) {
-        if (!this.mistral || findings.length === 0) {
-            return {
-                summary: fallbackSummary,
-                recommendations: fallbackRecommendations,
-            };
-        }
-        try {
-            const response = await this.mistral.chat.complete({
-                model: 'mistral-large-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a health report assistant. Return only valid JSON with keys: summary and recommendations. recommendations must be an array of short, generic wellness suggestions. Do not provide diagnosis, emergency advice, or drug prescriptions.',
-                    },
-                    {
-                        role: 'user',
-                        content: JSON.stringify({ type, findings }),
-                    },
-                ],
-                responseFormat: { type: 'json_object' },
-            });
-            const raw = response.choices?.[0]?.message?.content;
-            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const recommendations = this.sanitizeRecommendations(parsed?.recommendations);
-            return {
-                summary: typeof parsed?.summary === 'string' && parsed.summary.trim()
-                    ? parsed.summary.trim()
-                    : fallbackSummary,
-                recommendations: recommendations.length ? recommendations : fallbackRecommendations,
-            };
-        }
-        catch (error) {
-            console.error('Mistral recommendation generation failed:', error);
-            return {
-                summary: fallbackSummary,
-                recommendations: fallbackRecommendations,
-            };
-        }
-    }
-    sanitizeFindings(value) {
+    calculateBloodCategoryScores(findings) { return { bloodHealth: findings.length ? 70 : 50, followUpNeed: findings.length ? 55 : 80 }; }
+    calculateWeightedHealthScore(findings) { return Math.max(35, Math.min(95, 70 + Math.min(10, findings.length))); }
+    normalizeFiveYearAnswers(value) {
         if (!Array.isArray(value))
-            return [];
-        return value
-            .filter((item) => item && typeof item.label === 'string' && typeof item.value === 'string')
-            .map((item) => ({
-            label: String(item.label).trim(),
-            value: String(item.value).trim(),
-            status: item.status === 'high' || item.status === 'low' || item.status === 'normal'
-                ? item.status
-                : 'normal',
-            note: typeof item.note === 'string' ? item.note.trim() : undefined,
-        }))
-            .filter((item) => item.label && item.value);
+            return null;
+        const items = value.map((v) => ({ year: this.toNumber(v?.year) || 1, question: this.getString(v?.question), answer: this.getString(v?.answer), outlook: this.normalizeOutlook(v?.outlook) })).filter((v) => v.question && v.answer);
+        return items.length ? items : null;
     }
-    sanitizeRecommendations(value) {
-        if (!Array.isArray(value))
-            return [];
-        return value
-            .filter((item) => typeof item === 'string')
-            .map((item) => item.trim())
-            .filter(Boolean);
-    }
-    uniqueMarkers(markers) {
-        const map = new Map();
-        for (const marker of markers) {
-            if (!map.has(marker.name)) {
-                map.set(marker.name, marker);
-            }
-        }
-        return [...map.values()];
-    }
-    uniqueFindings(findings) {
-        const map = new Map();
-        for (const finding of findings) {
-            if (!map.has(finding.label)) {
-                map.set(finding.label, finding);
-            }
-        }
-        return [...map.values()];
-    }
-    toNumber(value) {
-        const match = String(value || '').match(/\d+(?:\.\d+)?/);
-        return match ? Number(match[0]) : NaN;
-    }
+    normalizeFindings(value) { if (!Array.isArray(value))
+        return null; const items = value.map((v) => ({ label: this.getString(v?.label), status: this.normalizeStatus(v?.status), value: this.getString(v?.value), severityScore: this.toNumber(v?.severityScore), note: this.getString(v?.note) || undefined, whyItMatters: this.getString(v?.whyItMatters) || undefined, possibleCauses: this.normalizeStringArray(v?.possibleCauses) || undefined, recommendedActions: this.normalizeStringArray(v?.recommendedActions) || undefined })).filter((v) => v.label && v.value); return items.length ? items : null; }
+    normalizePatternInsights(value) { if (!Array.isArray(value))
+        return null; const items = value.map((v) => ({ title: this.getString(v?.title), severity: this.normalizePatternSeverity(v?.severity), insight: this.getString(v?.insight) })).filter((v) => v.title && v.insight); return items.length ? items : null; }
+    normalizeTraits(value) { if (!Array.isArray(value))
+        return null; const items = value.map((v) => ({ trait: this.getString(v?.trait), result: this.getString(v?.result), basedOn: this.normalizeStringArray(v?.basedOn) || [], insight: this.getString(v?.insight) })).filter((v) => v.trait && v.result && v.insight); return items.length ? items : null; }
+    normalizeLongTermInsights(value) { if (!Array.isArray(value))
+        return null; const items = value.map((v) => ({ horizonYears: this.toNumber(v?.horizonYears) || 5, title: this.getString(v?.title), outlook: this.normalizeOutlook(v?.outlook), insight: this.getString(v?.insight) })).filter((v) => v.title && v.insight); return items.length ? items : null; }
+    normalizeRecommendations(value) { if (!value || typeof value !== 'object' || Array.isArray(value))
+        return null; return { diet: this.normalizeStringArray(value.diet) || [], exercise: this.normalizeStringArray(value.exercise) || [], sleep: this.normalizeStringArray(value.sleep) || [], supplements: this.normalizeStringArray(value.supplements) || [], followUp: this.normalizeStringArray(value.followUp) || [] }; }
+    normalizeRiskCategories(value) { if (!value || typeof value !== 'object' || Array.isArray(value))
+        return null; const out = {}; for (const [k, v] of Object.entries(value)) {
+        const n = this.toNumber(v);
+        if (k && Number.isFinite(n))
+            out[k] = n;
+    } return Object.keys(out).length ? out : null; }
+    normalizeStringArray(value) { if (!Array.isArray(value))
+        return null; const items = value.map((v) => this.getString(v)).filter(Boolean); return items.length ? items : null; }
+    normalizeStatus(value) { const v = String(value || '').trim(); return ['normal', 'borderline', 'mild_high', 'moderate_high', 'critical_high', 'mild_low', 'critical_low'].includes(v) ? v : 'normal'; }
+    normalizePatternSeverity(value) { const v = String(value || '').trim(); return v === 'high' || v === 'moderate' || v === 'low' ? v : 'moderate'; }
+    normalizeOutlook(value) { const v = String(value || '').trim(); return v === 'high' || v === 'moderate' || v === 'low' ? v : 'moderate'; }
+    getString(value) { return String(value ?? '').trim(); }
+    toNumber(value) { if (typeof value === 'number' && Number.isFinite(value))
+        return value; const match = String(value ?? '').match(/\d+(?:\.\d+)?/); return match ? Number(match[0]) : NaN; }
+    uniqueMarkers(markers) { const map = new Map(); for (const marker of markers)
+        if (!map.has(marker.name))
+            map.set(marker.name, marker); return [...map.values()]; }
+    detectMissingMarkers(markers) { const importantMarkers = ['HbA1c', 'Ferritin', 'Vitamin D', 'Vitamin B12', 'hs-CRP']; return importantMarkers.filter((marker) => !markers.some((m) => m.name === marker)); }
 };
 exports.AiService = AiService;
 exports.AiService = AiService = __decorate([

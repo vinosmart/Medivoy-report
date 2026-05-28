@@ -7,12 +7,16 @@ export const useMedivoyApi = () => {
 
   const headers = (): Record<string, string> => {
     const h: Record<string, string> = {}
-    if (auth.token) h.Authorization = `Bearer ${auth.token}`
+
+    if (auth.token) {
+      h.Authorization = `Bearer ${auth.token}`
+    }
+
     return h
   }
 
   return {
-    // ── Auth ──────────────────────────────────────────────────────────────────
+    // Auth
     login: (email: string, password: string) =>
       $fetch<any>(`${baseURL}/auth/login`, {
         method: 'POST',
@@ -25,12 +29,16 @@ export const useMedivoyApi = () => {
         body: { email, password, role },
       }),
 
-    // ── Reports ───────────────────────────────────────────────────────────────
+    // Reports
     getReports: () =>
-      $fetch<any[]>(`${baseURL}/reports`, { headers: headers() }),
+      $fetch<any[]>(`${baseURL}/reports`, {
+        headers: headers(),
+      }),
 
     getReport: (id: string) =>
-      $fetch<any>(`${baseURL}/reports/${id}`, { headers: headers() }),
+      $fetch<any>(`${baseURL}/reports/${id}`, {
+        headers: headers(),
+      }),
 
     uploadReport: (formData: FormData) =>
       $fetch<any>(`${baseURL}/reports/upload`, {
@@ -45,9 +53,11 @@ export const useMedivoyApi = () => {
         headers: headers(),
       }),
 
-    // ── Family ────────────────────────────────────────────────────────────────
+    // Family
     getFamilyMembers: () =>
-      $fetch<any[]>(`${baseURL}/family`, { headers: headers() }),
+      $fetch<any[]>(`${baseURL}/family`, {
+        headers: headers(),
+      }),
 
     addFamilyMember: (data: any) =>
       $fetch<any>(`${baseURL}/family`, {
@@ -62,9 +72,11 @@ export const useMedivoyApi = () => {
         headers: headers(),
       }),
 
-    // ── Orders ────────────────────────────────────────────────────────────────
+    // Orders
     getOrders: () =>
-      $fetch<any[]>(`${baseURL}/orders`, { headers: headers() }),
+      $fetch<any[]>(`${baseURL}/orders`, {
+        headers: headers(),
+      }),
 
     placeOrder: (data: any) =>
       $fetch<any>(`${baseURL}/orders`, {
@@ -86,9 +98,11 @@ export const useMedivoyApi = () => {
         headers: headers(),
       }),
 
-    // ── Profile ───────────────────────────────────────────────────────────────
+    // Profile
     getProfile: () =>
-      $fetch<any>(`${baseURL}/profile`, { headers: headers() }),
+      $fetch<any>(`${baseURL}/profile`, {
+        headers: headers(),
+      }),
 
     saveProfile: (data: any) =>
       $fetch<any>(`${baseURL}/profile`, {
@@ -97,9 +111,11 @@ export const useMedivoyApi = () => {
         headers: headers(),
       }),
 
-    // ── Genetics ──────────────────────────────────────────────────────────────
+    // Genetics
     getGenetics: () =>
-      $fetch<any>(`${baseURL}/genetics`, { headers: headers() }),
+      $fetch<any>(`${baseURL}/genetics`, {
+        headers: headers(),
+      }),
 
     saveGenetics: (data: any) =>
       $fetch<any>(`${baseURL}/genetics`, {
@@ -108,7 +124,7 @@ export const useMedivoyApi = () => {
         headers: headers(),
       }),
 
-    // ── Nutrition ─────────────────────────────────────────────────────────────
+    // Nutrition
     getNutritionGuidance: (payload: {
       goal: string
       diet?: string
