@@ -140,5 +140,26 @@ export const useMedivoyApi = () => {
         body: payload,
         headers: headers(),
       }),
+
+    // Pharmacy
+    searchMedicines: (query: string, take = 20) =>
+      $fetch<any>(`${baseURL}/pharmacy/medicines?q=${encodeURIComponent(query)}&take=${take}`, {
+        headers: headers(),
+      }),
+
+    getDoctors: (specialty?: string) =>
+      $fetch<any>(`${baseURL}/pharmacy/doctors${specialty ? `?specialty=${encodeURIComponent(specialty)}` : ''}`, {
+        headers: headers(),
+      }),
+
+    getPharmacies: (lat: number, lng: number) =>
+      $fetch<any>(`${baseURL}/pharmacy/pharmacies?lat=${lat}&lng=${lng}`, {
+        headers: headers(),
+      }),
+
+    getPharmacySuggestions: (reportId?: string) =>
+      $fetch<any>(`${baseURL}/pharmacy/suggestions${reportId ? `?reportId=${encodeURIComponent(reportId)}` : ''}`, {
+        headers: headers(),
+      }),
   }
 }

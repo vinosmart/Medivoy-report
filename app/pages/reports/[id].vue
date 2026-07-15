@@ -277,6 +277,80 @@
         </div>
       </div>
 
+      <!-- Medicine & Supplement Suggestions -->
+      <div v-if="displayedMedicineSuggestions.length" class="card medicine-card">
+        <div class="disclaimer-inline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span><strong>AI Suggestion — Consult a doctor before taking any medicine.</strong> These are AI-generated recommendations based on your report, cross-checked against live pharmacy stock where available. They are NOT a medical prescription. Always consult a qualified healthcare professional before starting any medication or supplement.</span>
+        </div>
+
+        <h2 class="card-title">Suggested Medicines & Supplements</h2>
+        <div class="med-suggestions-list">
+          <div v-for="(med, idx) in displayedMedicineSuggestions" :key="idx" class="med-suggestion-item" :class="'med-type-' + med.type">
+            <div class="med-suggestion-header">
+              <span class="med-suggestion-type">{{ med.type === 'medicine' ? '💊' : med.type === 'vitamin' ? '💊' : '🌿' }} {{ capitalize(med.type) }}</span>
+              <span v-if="med.live?.isPrescriptionRequired ?? med.isPrescriptionRequired" class="rx-badge-sm">Requires Prescription</span>
+            </div>
+            <h3 class="med-suggestion-name">{{ med.live?.brandName || med.name }}</h3>
+            <p v-if="med.live?.genericName" class="med-suggestion-generic">{{ med.live.genericName }}</p>
+            <p class="med-suggestion-reason">{{ med.reason }}</p>
+            <p v-if="med.evidence" class="med-suggestion-evidence">Evidence: {{ med.evidence }}</p>
+            <div v-if="med.dosage || med.duration" class="med-suggestion-details">
+              <span v-if="med.dosage" class="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
+                {{ med.dosage }}
+              </span>
+              <span v-if="med.duration" class="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ med.duration }}
+              </span>
+            </div>
+            <div v-if="med.live?.sellPricePaise != null" class="med-suggestion-price">
+              <span class="price">₹{{ (med.live.sellPricePaise / 100).toFixed(2) }}</span>
+              <span v-if="med.live.mrpPaise" class="mrp">MRP ₹{{ (med.live.mrpPaise / 100).toFixed(2) }}</span>
+              <span v-if="med.live.packText" class="pack">{{ med.live.packText }}</span>
+            </div>
+            <a
+              v-if="med.live?.slug"
+              :href="`https://pharmacy.medivoy.ae/product/${med.live.slug}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-primary btn-sm buy-btn"
+            >
+              Buy Now →
+            </a>
+          </div>
+        </div>
+        <div class="pharmacy-cta">
+          <NuxtLink to="/pharmacy" class="btn-primary btn-sm">
+            Search in Pharmacy →
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Suggested Doctors -->
+      <div v-if="pharmacySuggestions?.doctorSuggestions?.length" class="card medicine-card">
+        <h2 class="card-title">Suggested Doctors</h2>
+        <div class="doctor-list">
+          <div v-for="doc in pharmacySuggestions.doctorSuggestions" :key="doc.doctorId || doc.id" class="doctor-card">
+            <div class="doc-avatar">{{ (doc.name || 'Dr. ')[0] }}</div>
+            <div class="doc-info">
+              <p class="doc-name">{{ doc.name || 'Doctor' }}</p>
+              <p class="doc-spec">{{ doc.specialty || doc.specialties?.join(', ') || 'General Physician' }}</p>
+              <p v-if="doc.experience" class="doc-exp">{{ doc.experience }} years experience</p>
+            </div>
+          </div>
+        </div>
+        <div class="pharmacy-cta">
+          <NuxtLink to="/pharmacy" class="btn-primary btn-sm">
+            Find more doctors →
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Document Preview -->
       <div v-if="resolvedFileUrl" class="card preview-card">
         <div class="preview-header">
@@ -326,8 +400,16 @@ const route = useRoute();
 const api = useMedivoyApi();
 const report = ref<any>(null);
 const loading = ref(true);
+const pharmacySuggestions = ref<any>(null);
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api-geno.medivoy.ae";
+
+const displayedMedicineSuggestions = computed(() => {
+  if (pharmacySuggestions.value?.medicineSuggestions?.length) {
+    return pharmacySuggestions.value.medicineSuggestions;
+  }
+  return report.value?.medicineSuggestions || [];
+});
 
 onMounted(async () => {
   try {
@@ -336,6 +418,14 @@ onMounted(async () => {
     report.value = null;
   } finally {
     loading.value = false;
+  }
+
+  if (report.value?.id) {
+    try {
+      pharmacySuggestions.value = await api.getPharmacySuggestions(report.value.id);
+    } catch {
+      pharmacySuggestions.value = null;
+    }
   }
 });
 
@@ -907,6 +997,194 @@ function viewFile() {
   left: 0;
   color: #9ca3af;
   font-weight: 700;
+}
+
+/* Medicine Suggestions */
+.medicine-card {
+  border-color: #dbeafe;
+  background: #f8faff;
+}
+.disclaimer-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 0.625rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+.disclaimer-inline svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #d97706;
+}
+.med-suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.med-suggestion-item {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+.med-suggestion-item.med-type-medicine {
+  border-left: 3px solid #f59e0b;
+}
+.med-suggestion-item.med-type-supplement {
+  border-left: 3px solid #10b981;
+}
+.med-suggestion-item.med-type-vitamin {
+  border-left: 3px solid #3b82f6;
+}
+.med-suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  flex-wrap: wrap;
+}
+.med-suggestion-type {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+.rx-badge-sm {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+.med-suggestion-name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.375rem;
+}
+.med-suggestion-generic {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: -0.25rem 0 0.375rem;
+}
+.med-suggestion-reason {
+  font-size: 0.8125rem;
+  color: #4b5563;
+  line-height: 1.55;
+  margin: 0 0 0.625rem;
+}
+.med-suggestion-evidence {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: -0.375rem 0 0.625rem;
+}
+.med-suggestion-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.med-suggestion-price {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+.med-suggestion-price .price {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #01696f;
+}
+.med-suggestion-price .mrp {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+.med-suggestion-price .pack {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+.detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+}
+.detail-chip svg {
+  color: #9ca3af;
+}
+.pharmacy-cta {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+.buy-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  text-decoration: none;
+}
+.doctor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.doctor-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+}
+.doc-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #01696f, #0c4e54);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+.doc-info { flex: 1; }
+.doc-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.125rem;
+}
+.doc-spec {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.125rem;
+}
+.doc-exp {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0;
 }
 
 /* Preview */

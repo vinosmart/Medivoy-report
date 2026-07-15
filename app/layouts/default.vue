@@ -169,6 +169,7 @@ const navItems = computed(() => [
   { label: "Nutrition", to: "/nutrition", icon: "🥦" },
   { label: "Lab kits", to: "/lab-kits", icon: "🧪" },
   { label: "Genetics", to: "/genetics", icon: "🧬" },
+  { label: "Pharmacy", to: "/pharmacy", icon: "💊" },
   { label: "Admin", to: "/admin", icon: "🛡️", badge: auth.isAdmin ? "on" : "" },
 ]);
 
@@ -180,6 +181,7 @@ const routeTitles: Record<string, string> = {
   "/nutrition": "Nutrition",
   "/lab-kits": "Lab Kits",
   "/genetics": "Genetics",
+  "/pharmacy": "Pharmacy",
   "/admin": "Admin",
 };
 
@@ -191,6 +193,7 @@ const subtitleMap: Record<string, string> = {
   "/nutrition": "View diet and vitamin guidance",
   "/lab-kits": "Partner kits and fulfillment",
   "/genetics": "DNA and variant insights",
+  "/pharmacy": "Search medicines and find doctors",
   "/admin": "Platform control center",
 };
 
