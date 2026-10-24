@@ -1,0 +1,14 @@
+/node_modules
+.env
+/dist
+pnpm-lock.yaml
+uploads
+data
+
+# Python OCR server
+venv/
+__pycache__/
+*.log
+
+# Tesseract language data, downloaded at runtime
+*.traineddata

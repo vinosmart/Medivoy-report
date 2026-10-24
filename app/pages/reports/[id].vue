@@ -81,8 +81,8 @@
       <div class="card summary-card">
         <div class="summary-top">
           <div class="summary-info">
-            <div class="report-type-badge" :class="'type-' + report.type">
-              {{ report.type?.toUpperCase() }}
+            <div class="report-type-badge" :class="'type-' + reportType">
+              {{ reportType.toUpperCase() }}
             </div>
             <h1 class="report-title">{{ report.title }}</h1>
             <p class="report-meta">
@@ -97,9 +97,13 @@
                 <span class="meta-sep">·</span>
                 {{ report.forMember }}
               </template>
+              <template v-if="confidencePercent != null">
+                <span class="meta-sep">·</span>
+                {{ confidencePercent }}% confidence
+              </template>
             </p>
           </div>
-          <div v-if="report.riskScore != null" class="risk-score-ring">
+          <div v-if="healthScore != null" class="risk-score-ring">
             <svg width="80" height="80" viewBox="0 0 80 80">
               <circle
                 cx="40"
@@ -114,23 +118,58 @@
                 cy="40"
                 r="34"
                 fill="none"
-                :stroke="riskColor(report.riskScore)"
+                :stroke="healthColor(healthScore)"
                 stroke-width="7"
                 stroke-linecap="round"
                 :stroke-dasharray="213.6"
-                :stroke-dashoffset="213.6 - (213.6 * report.riskScore) / 100"
+                :stroke-dashoffset="213.6 - (213.6 * healthScore) / 100"
                 transform="rotate(-90 40 40)"
               />
             </svg>
             <span
               class="risk-number"
-              :style="{ color: riskColor(report.riskScore) }"
-              >{{ report.riskScore }}</span
+              :style="{ color: healthColor(healthScore) }"
+              >{{ healthScore }}</span
             >
-            <span class="risk-label">Risk</span>
+            <span class="risk-label">Health</span>
           </div>
         </div>
         <p class="summary-text">{{ report.summary }}</p>
+      </div>
+
+      <!-- Critical Findings -->
+      <div v-if="report.criticalFindings?.length" class="card alert-card alert-critical">
+        <h2 class="card-title">Critical Findings</h2>
+        <ul class="rec-list">
+          <li v-for="c in report.criticalFindings" :key="c">{{ c }}</li>
+        </ul>
+      </div>
+
+      <!-- Warnings -->
+      <div v-if="report.warnings?.length" class="card alert-card alert-warning">
+        <h2 class="card-title">Warnings</h2>
+        <ul class="rec-list">
+          <li v-for="w in report.warnings" :key="w">{{ w }}</li>
+        </ul>
+      </div>
+
+      <!-- Key Insights & Positive Findings -->
+      <div
+        v-if="report.keyInsights?.length || report.positiveFindings?.length"
+        class="even-col"
+      >
+        <div v-if="report.keyInsights?.length" class="card">
+          <h2 class="card-title">Key Insights</h2>
+          <ul class="rec-list">
+            <li v-for="k in report.keyInsights" :key="k">{{ k }}</li>
+          </ul>
+        </div>
+        <div v-if="report.positiveFindings?.length" class="card positive-card">
+          <h2 class="card-title">Positive Findings</h2>
+          <ul class="rec-list">
+            <li v-for="p in report.positiveFindings" :key="p">{{ p }}</li>
+          </ul>
+        </div>
       </div>
 
       <div class="two-col">
@@ -142,29 +181,43 @@
               v-for="f in report.findings"
               :key="f.label"
               class="finding-item"
-              :class="'finding-' + f.status"
+              :class="'finding-' + normalizeStatus(f.status)"
             >
               <div class="finding-header">
                 <span class="finding-label">{{ f.label }}</span>
-                <span class="finding-badge" :class="'badge-' + f.status">{{
-                  statusLabel(f.status)
-                }}</span>
+                <span
+                  class="finding-badge"
+                  :class="'badge-' + normalizeStatus(f.status)"
+                  >{{ statusLabel(normalizeStatus(f.status)) }}</span
+                >
               </div>
               <p v-if="f.value" class="finding-value">{{ f.value }}</p>
               <p v-if="f.whyItMatters" class="finding-why">
                 {{ f.whyItMatters }}
               </p>
+              <div v-if="f.possibleCauses?.length" class="finding-sub">
+                <p class="finding-sub-title">Possible causes</p>
+                <ul class="rec-list">
+                  <li v-for="c in f.possibleCauses" :key="c">{{ c }}</li>
+                </ul>
+              </div>
+              <div v-if="f.recommendedActions?.length" class="finding-sub">
+                <p class="finding-sub-title">What to do</p>
+                <ul class="rec-list">
+                  <li v-for="a in f.recommendedActions" :key="a">{{ a }}</li>
+                </ul>
+              </div>
               <div v-if="f.severityScore != null" class="severity-bar-wrap">
                 <div class="severity-bar">
                   <div
                     class="severity-fill"
                     :style="{
-                      width: f.severityScore + '%',
-                      background: riskColor(f.severityScore),
+                      width: severityPercent(f.severityScore) + '%',
+                      background: riskColor(severityPercent(f.severityScore)),
                     }"
                   ></div>
                 </div>
-                <span class="severity-num">{{ f.severityScore }}</span>
+                <span class="severity-num">{{ severityPercent(f.severityScore) }}</span>
               </div>
             </div>
           </div>
@@ -185,7 +238,12 @@
               </thead>
               <tbody>
                 <tr v-for="m in report.markers" :key="m.name">
-                  <td>{{ m.name }}</td>
+                  <td>
+                    {{ m.name }}
+                    <span v-if="m.referenceRange" class="range-text"
+                      >Range: {{ m.referenceRange }}</span
+                    >
+                  </td>
                   <td>
                     <strong>{{ m.value }}</strong>
                   </td>
@@ -273,6 +331,122 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Categories & Missing Markers -->
+      <div
+        v-if="riskCategoryList.length || report.missingImportantMarkers?.length"
+        class="even-col"
+      >
+        <div v-if="riskCategoryList.length" class="card">
+          <h2 class="card-title">Risk Breakdown</h2>
+          <div class="risk-cat-list">
+            <div v-for="rc in riskCategoryList" :key="rc.key" class="risk-cat">
+              <span class="risk-cat-label">{{ rc.label }}</span>
+              <div class="severity-bar-wrap risk-cat-bar">
+                <div class="severity-bar">
+                  <div
+                    class="severity-fill"
+                    :style="{ width: rc.value + '%', background: riskColor(rc.value) }"
+                  ></div>
+                </div>
+                <span class="severity-num">{{ rc.value }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="report.missingImportantMarkers?.length" class="card">
+          <h2 class="card-title">Suggested Additional Tests</h2>
+          <p class="card-note">
+            These tests weren't in this report but would help complete the picture.
+          </p>
+          <div class="chip-list">
+            <span
+              v-for="m in report.missingImportantMarkers"
+              :key="m"
+              class="detail-chip"
+              >{{ m }}</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Pattern Analysis -->
+      <div v-if="report.patternAnalysis?.length" class="card">
+        <h2 class="card-title">Pattern Analysis</h2>
+        <div class="findings-list">
+          <div
+            v-for="p in report.patternAnalysis"
+            :key="p.title"
+            class="finding-item"
+            :class="'outlook-' + p.severity"
+          >
+            <div class="finding-header">
+              <span class="finding-label">{{ p.title }}</span>
+              <span class="finding-badge" :class="'outlook-badge-' + p.severity">{{
+                capitalize(p.severity)
+              }}</span>
+            </div>
+            <p class="finding-why">{{ p.insight }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Long-Term Outlook & 5-Year Plan -->
+      <div
+        v-if="report.longTermInsights?.length || report.fiveYearAnswers?.length"
+        class="even-col"
+      >
+        <div v-if="report.longTermInsights?.length" class="card">
+          <h2 class="card-title">Long-Term Outlook</h2>
+          <div class="findings-list">
+            <div
+              v-for="lt in report.longTermInsights"
+              :key="lt.title"
+              class="finding-item"
+              :class="'outlook-' + lt.outlook"
+            >
+              <div class="finding-header">
+                <span class="finding-label">{{ lt.title }}</span>
+                <span class="finding-badge" :class="'outlook-badge-' + lt.outlook"
+                  >{{ lt.horizonYears }}-year · {{ capitalize(lt.outlook) }} risk</span
+                >
+              </div>
+              <p class="finding-why">{{ lt.insight }}</p>
+            </div>
+          </div>
+        </div>
+        <div v-if="report.fiveYearAnswers?.length" class="card">
+          <h2 class="card-title">5-Year Plan</h2>
+          <div class="timeline">
+            <div v-for="y in report.fiveYearAnswers" :key="y.year" class="timeline-item">
+              <div class="timeline-year" :class="'outlook-badge-' + y.outlook">
+                Y{{ y.year }}
+              </div>
+              <div>
+                <p class="timeline-question">{{ y.question }}</p>
+                <p class="finding-why">{{ y.answer }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DNA Traits -->
+      <div v-if="report.dnaTraits?.length" class="card">
+        <h2 class="card-title">Genetic Traits</h2>
+        <div class="findings-list">
+          <div v-for="t in report.dnaTraits" :key="t.trait" class="finding-item">
+            <div class="finding-header">
+              <span class="finding-label">{{ t.trait }}</span>
+              <span class="finding-badge badge-borderline">{{ t.result }}</span>
+            </div>
+            <p class="finding-why">{{ t.insight }}</p>
+            <p v-if="t.basedOn?.length" class="range-text">
+              Based on: {{ t.basedOn.join(", ") }}
+            </p>
           </div>
         </div>
       </div>
@@ -391,6 +565,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Extracted Text -->
+      <details v-if="report.extractedText" class="card extracted-card">
+        <summary class="card-title extracted-summary">Extracted Text</summary>
+        <pre class="extracted-text">{{ report.extractedText }}</pre>
+      </details>
     </div>
   </div>
 </template>
@@ -402,7 +582,38 @@ const report = ref<any>(null);
 const loading = ref(true);
 const pharmacySuggestions = ref<any>(null);
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://api-geno.medivoy.ae";
+// Uploads are served from the API host, outside the /api prefix.
+const API_BASE = String(useRuntimeConfig().public.apiBase || "https://api-geno.medivoy.ae/api")
+  .replace(/\/api\/?$/, "");
+
+const reportType = computed(() =>
+  String(report.value?.reportType || report.value?.type || "other").toLowerCase(),
+);
+
+// Older reports store the health score only in riskScore.
+const healthScore = computed(() => {
+  const v = report.value?.overallHealthScore ?? report.value?.riskScore;
+  return v == null ? null : Math.round(Number(v));
+});
+
+// The AI returns confidence either as 0-1 or 0-100.
+const confidencePercent = computed(() => {
+  const v = Number(report.value?.confidenceScore);
+  if (!v) return null;
+  return Math.round(v <= 1 ? v * 100 : v);
+});
+
+const riskCategoryList = computed(() => {
+  const rc = report.value?.riskCategories || {};
+  const entries = Object.entries(rc).filter(([, v]) => typeof v === "number");
+  // Scores come back as 0-10 or 0-100 depending on the report.
+  const scale = entries.every(([, v]) => (v as number) <= 10) ? 10 : 1;
+  return entries.map(([key, v]) => ({
+    key,
+    label: humanize(key.replace(/Risk$/, "")),
+    value: Math.min(100, Math.round((v as number) * scale)),
+  }));
+});
 
 const displayedMedicineSuggestions = computed(() => {
   if (pharmacySuggestions.value?.medicineSuggestions?.length) {
@@ -467,6 +678,28 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function humanize(s: string) {
+  return capitalize(
+    s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase(),
+  );
+}
+
+// The backend sends statuses like "mildhigh"; styles use "mild_high".
+function normalizeStatus(s: string) {
+  const key = String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+  const map: Record<string, string> = {
+    mildhigh: "mild_high",
+    moderatehigh: "moderate_high",
+    criticalhigh: "critical_high",
+    high: "moderate_high",
+    mildlow: "mild_low",
+    moderatelow: "moderate_low",
+    criticallow: "critical_low",
+    low: "mild_low",
+  };
+  return map[key] || key;
+}
+
 function statusLabel(s: string) {
   const map: Record<string, string> = {
     normal: "Normal",
@@ -475,9 +708,16 @@ function statusLabel(s: string) {
     moderate_high: "Moderate High",
     critical_high: "Critical",
     mild_low: "Mild Low",
+    moderate_low: "Moderate Low",
     critical_low: "Critical Low",
   };
-  return map[s] || s;
+  return map[s] || humanize(s);
+}
+
+// Severity comes back as 0-10 or 0-100; show it as a percentage.
+function severityPercent(score: number) {
+  const n = Number(score) || 0;
+  return Math.min(100, Math.round(n <= 10 ? n * 10 : n));
 }
 
 function riskColor(score: number) {
@@ -485,6 +725,10 @@ function riskColor(score: number) {
   if (score >= 50) return "#fb8c00";
   if (score >= 25) return "#fdd835";
   return "#43a047";
+}
+
+function healthColor(score: number) {
+  return riskColor(100 - score);
 }
 
 function downloadFile() {
@@ -801,7 +1045,8 @@ function viewFile() {
   background: #fff5f5;
   border-color: #fecaca;
 }
-.finding-moderate_high {
+.finding-moderate_high,
+.finding-moderate_low {
   background: #fff7ed;
   border-color: #fed7aa;
 }
@@ -852,7 +1097,8 @@ function viewFile() {
   background: #fef9c3;
   color: #854d0e;
 }
-.badge-moderate_high {
+.badge-moderate_high,
+.badge-moderate_low {
   background: #ffedd5;
   color: #9a3412;
 }
@@ -927,6 +1173,169 @@ function viewFile() {
 .unit-cell {
   color: #9ca3af;
   font-size: 0.8125rem;
+}
+.range-text {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-top: 0.125rem;
+}
+
+/* Two equal columns */
+.even-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 1.25rem;
+}
+.even-col .card {
+  margin-bottom: 0;
+}
+@media (max-width: 768px) {
+  .even-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Alerts */
+.alert-critical {
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+.alert-critical .card-title {
+  color: #991b1b;
+}
+.alert-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.alert-warning .card-title {
+  color: #92400e;
+}
+.positive-card {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.card-note {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: -0.5rem 0 0.875rem;
+}
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Finding details */
+.finding-sub {
+  margin-top: 0.625rem;
+}
+.finding-sub-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin: 0 0 0.25rem;
+}
+.finding-sub .rec-list li {
+  font-size: 0.8125rem;
+}
+
+/* Risk categories */
+.risk-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.risk-cat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+.risk-cat-bar {
+  margin-top: 0.25rem;
+}
+
+/* Outlook (low / moderate / high) */
+.outlook-low {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.outlook-moderate {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.outlook-high {
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+.outlook-badge-low {
+  background: #dcfce7;
+  color: #166534;
+}
+.outlook-badge-moderate {
+  background: #fef9c3;
+  color: #854d0e;
+}
+.outlook-badge-high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* 5-year timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.timeline-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.timeline-year {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.timeline-question {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+/* Extracted text */
+.extracted-summary {
+  cursor: pointer;
+  margin: 0;
+}
+.extracted-card[open] .extracted-summary {
+  margin-bottom: 1rem;
+}
+.extracted-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #4b5563;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.625rem;
+  padding: 1rem;
+  max-height: 400px;
+  overflow: auto;
+  margin: 0;
 }
 
 /* Recommendations */

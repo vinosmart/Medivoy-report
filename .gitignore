@@ -3,4 +3,4 @@ uploads
 .nuxt
 pnpm-lock.yaml
 
-backend
+/node_modules
