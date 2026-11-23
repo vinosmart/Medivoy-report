@@ -1,0 +1,1 @@
+import{_ as t,o as s,c as r,N as o}from"./_Pb-Y1K4.js";const a={},c={class:"min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6"};function n(e,l){return s(),r("div",c,[o(e.$slots,"default")])}const i=t(a,[["render",n]]);export{i as default};

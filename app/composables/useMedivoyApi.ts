@@ -23,10 +23,10 @@ export const useMedivoyApi = () => {
         body: { email, password },
       }),
 
-    register: (email: string, password: string, role = 'patient') =>
+    register: (email: string, password: string, role = 'patient', name = '') =>
       $fetch<any>(`${baseURL}/auth/register`, {
         method: 'POST',
-        body: { email, password, role },
+        body: { email, password, role, name },
       }),
 
     // Reports

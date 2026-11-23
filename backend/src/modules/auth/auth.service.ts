@@ -8,11 +8,11 @@ export interface UserPayload { sub: string; email: string; role: string }
 @Injectable()
 export class AuthService {
   constructor(private jwt: JwtService, @InjectRepository(User) private userRepo: Repository<User>) {}
-  async register(email: string, password: string, role: string = 'patient') {
+  async register(email: string, password: string, role: string = 'patient', name?: string) {
     const existing = await this.userRepo.findOne({ where: { email } })
     if (existing) throw new ConflictException('Email already registered')
     const hashed = await bcrypt.hash(password, 10)
-    const user = this.userRepo.create({ email, password: hashed, role })
+    const user = this.userRepo.create({ email, password: hashed, role, name: name?.trim() || null })
     await this.userRepo.save(user)
     return this.generateToken(user)
   }
@@ -23,6 +23,6 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Invalid email or password')
     return this.generateToken(user)
   }
-  private generateToken(user: User) { const payload: UserPayload = { sub: user.id, email: user.email, role: user.role }; return { access_token: this.jwt.sign(payload), user: { id: user.id, email: user.email, role: user.role } } }
+  private generateToken(user: User) { const payload: UserPayload = { sub: user.id, email: user.email, role: user.role }; return { access_token: this.jwt.sign(payload), user: { id: user.id, email: user.email, name: user.name, role: user.role } } }
   async validateUser(payload: UserPayload) { return this.userRepo.findOne({ where: { id: payload.sub } }) }
 }

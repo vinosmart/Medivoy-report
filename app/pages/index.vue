@@ -1,298 +1,144 @@
 <template>
-  <div class="flex min-h-screen w-full">
-    <!-- Left panel -->
-    <div
-      class="hidden lg:flex lg:w-1/2 flex-col justify-between bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-12 text-white"
-    >
-      <div class="flex items-center gap-3">
-        <div
-          class="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center font-bold text-lg"
-        >
-          M
-        </div>
-        <div>
-          <p class="font-bold text-lg tracking-tight">Medivoy</p>
-          <p class="text-xs text-slate-400">Preventive Health OS</p>
-        </div>
+  <main class="auth-shell">
+    <section class="auth-brand" aria-label="About Medivoy">
+      <div class="brand-glow brand-glow-one"></div>
+      <div class="brand-glow brand-glow-two"></div>
+      <div class="brand-grid"></div>
+
+      <div class="brand-top">
+        <img :src="medivoyLogo" alt="Medivoy" class="brand-logo" />
       </div>
-      <div class="space-y-8">
-        <div>
-          <p
-            class="text-xs font-semibold tracking-widest text-blue-400 uppercase"
-          >
-            AI Preventive Health Screening
-          </p>
-          <h2 class="mt-4 text-4xl font-bold leading-tight">
-            Know your health<br />for the next 5 years
-          </h2>
-          <p class="mt-4 text-slate-400 max-w-sm text-base leading-relaxed">
-            Upload your reports and find answers about your health profile, bio
-            age, family risk, nutrition gaps and longevity plan.
-          </p>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-2xl font-bold text-cyan-400">87%</p>
-            <p class="mt-1 text-xs text-slate-400">Average health score</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-2xl font-bold text-emerald-400">5 yr</p>
-            <p class="mt-1 text-xs text-slate-400">Preventive horizon</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-2xl font-bold text-violet-400">DNA</p>
-            <p class="mt-1 text-xs text-slate-400">Genetic risk analysis</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-2xl font-bold text-amber-400">Bio Age</p>
-            <p class="mt-1 text-xs text-slate-400">Longevity intelligence</p>
-          </div>
-        </div>
-      </div>
-      <p class="text-xs text-slate-600">
-        © 2026 Medivoy. Not a medical diagnostic tool.
-      </p>
-    </div>
 
-    <!-- Right panel -->
-    <div
-      class="flex w-full lg:w-1/2 flex-col items-center justify-center bg-slate-50 p-6 sm:p-12"
-    >
-      <div class="w-full max-w-md space-y-8">
-        <!-- Mobile logo -->
-        <div class="flex lg:hidden items-center gap-3">
-          <div
-            class="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center font-bold"
-          >
-            M
-          </div>
-          <div>
-            <p class="font-bold text-lg">Medivoy</p>
-            <p class="text-xs text-slate-500">Preventive Health OS</p>
-          </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="flex gap-1 rounded-2xl bg-slate-200 p-1">
-          <button
-            @click="tab = 'login'"
-            class="flex-1 rounded-xl py-2.5 text-sm font-semibold transition"
-            :class="
-              tab === 'login'
-                ? 'bg-white shadow text-slate-900'
-                : 'text-slate-500'
-            "
-          >
-            Login
-          </button>
-          <button
-            @click="tab = 'register'"
-            class="flex-1 rounded-xl py-2.5 text-sm font-semibold transition"
-            :class="
-              tab === 'register'
-                ? 'bg-white shadow text-slate-900'
-                : 'text-slate-500'
-            "
-          >
-            Create account
-          </button>
-        </div>
-
-        <!-- Login form -->
-        <form
-          v-if="tab === 'login'"
-          class="space-y-4"
-          @submit.prevent="submitLogin"
-        >
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-600">Email</label>
-            <input
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              required
-            />
-          </div>
-          <div class="space-y-1">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-600"
-                >Password</label
-              >
-              <a href="#" class="text-xs text-blue-600 hover:underline"
-                >Forgot password?</a
-              >
-            </div>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="••••••••"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              required
-            />
-          </div>
-          <button
-            :disabled="loading"
-            class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-          >
-            <span v-if="loading" class="flex items-center justify-center gap-2">
-              <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8z"
-                />
-              </svg>
-              Logging in...
-            </span>
-            <span v-else>Login to Medivoy</span>
-          </button>
-          <p
-            v-if="message"
-            class="rounded-xl px-4 py-3 text-sm font-medium"
-            :class="
-              error
-                ? 'bg-rose-50 text-rose-700'
-                : 'bg-emerald-50 text-emerald-700'
-            "
-          >
-            {{ message }}
-          </p>
-        </form>
-
-        <!-- Register form -->
-        <form
-          v-if="tab === 'register'"
-          class="space-y-4"
-          @submit.prevent="submitRegister"
-        >
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-600"
-              >Full name</label
-            >
-            <input
-              v-model="name"
-              type="text"
-              placeholder="Your name"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              required
-            />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-600">Email</label>
-            <input
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              required
-            />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-600">Password</label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="Min 8 characters"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              required
-              minlength="8"
-            />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-600"
-              >Account type</label
-            >
-            <select
-              v-model="role"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option value="patient">Patient / Individual</option>
-              <option value="doctor">Doctor / Clinician</option>
-            </select>
-          </div>
-          <div class="flex items-start gap-3">
-            <input
-              v-model="agreed"
-              id="terms"
-              type="checkbox"
-              class="mt-1 h-4 w-4 rounded border-slate-300 accent-slate-900"
-              required
-            />
-            <label for="terms" class="text-xs text-slate-500 leading-5"
-              >I agree to Medivoy's
-              <a href="#" class="text-blue-600 hover:underline"
-                >terms of service</a
-              >
-              and
-              <a href="#" class="text-blue-600 hover:underline"
-                >privacy policy</a
-              >.</label
-            >
-          </div>
-          <button
-            :disabled="loading || !agreed"
-            class="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-          >
-            <span v-if="loading" class="flex items-center justify-center gap-2">
-              <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8z"
-                />
-              </svg>
-              Creating account...
-            </span>
-            <span v-else>Create account</span>
-          </button>
-          <p
-            v-if="message"
-            class="rounded-xl px-4 py-3 text-sm font-medium"
-            :class="
-              error
-                ? 'bg-rose-50 text-rose-700'
-                : 'bg-emerald-50 text-emerald-700'
-            "
-          >
-            {{ message }}
-          </p>
-        </form>
-
-        <p class="text-center text-xs text-slate-400">
-          Protected by 256-bit encryption · HIPAA-aligned privacy practices
+      <div class="brand-content">
+        <div class="brand-kicker"><span></span> Personal health intelligence</div>
+        <h1>One secure place for a healthier future.</h1>
+        <p class="brand-lead">
+          Connect your health records, family history and genetic insights in one beautifully organized dashboard.
         </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-icon">01</span>
+            <div><strong>Unified reports</strong><small>Health data, clearly organized</small></div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">02</span>
+            <div><strong>Family health</strong><small>Understand patterns together</small></div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">03</span>
+            <div><strong>Private & secure</strong><small>Your information stays protected</small></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+
+      <p class="brand-footer">© 2026 Medivoy. Your health, intelligently connected.</p>
+    </section>
+
+    <section class="auth-panel">
+      <div class="mobile-logo">
+        <img :src="medivoyLogo" alt="Medivoy" />
+      </div>
+
+      <div class="auth-card">
+        <header class="auth-header">
+          <p>{{ tab === "login" ? "Welcome back" : "Start your journey" }}</p>
+          <h2>{{ tab === "login" ? "Sign in to Medivoy" : "Create your account" }}</h2>
+        </header>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button type="button" role="tab" :aria-selected="tab === 'login'" :class="{ active: tab === 'login' }" @click="switchTab('login')">Sign in</button>
+          <button type="button" role="tab" :aria-selected="tab === 'register'" :class="{ active: tab === 'register' }" @click="switchTab('register')">Create account</button>
+        </div>
+
+        <form v-if="tab === 'login'" class="auth-form" @submit.prevent="submitLogin">
+          <div class="field">
+            <label for="login-email">Email address</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75Zm2.08.35 6.05 4.57a1.5 1.5 0 0 0 1.74 0l6.05-4.57" /></svg>
+              <input id="login-email" v-model="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="login-password">Password</label>
+              <button type="button" class="text-button" @click="message = 'Password recovery can be enabled from the account settings.'">Forgot password?</button>
+            </div>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+              <input id="login-password" v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="Enter your password" required />
+              <button type="button" class="password-toggle" :aria-label="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword">
+                {{ showPassword ? "Hide" : "Show" }}
+              </button>
+            </div>
+          </div>
+
+          <button class="primary-button" :disabled="loading" type="submit">
+            <span v-if="loading" class="spinner"></span>
+            {{ loading ? "Signing in..." : "Sign in" }}
+          </button>
+        </form>
+
+        <form v-else class="auth-form" @submit.prevent="submitRegister">
+          <div class="field">
+            <label for="register-name">Full name</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></svg>
+              <input id="register-name" v-model="name" type="text" autocomplete="name" placeholder="Your full name" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="register-email">Email address</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75Zm2.08.35 6.05 4.57a1.5 1.5 0 0 0 1.74 0l6.05-4.57" /></svg>
+              <input id="register-email" v-model="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="register-password">Password</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+              <input id="register-password" v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="Create a strong password" minlength="8" required />
+              <button type="button" class="password-toggle" :aria-label="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword">{{ showPassword ? "Hide" : "Show" }}</button>
+            </div>
+            <div class="strength-row">
+              <div class="strength-bars"><span :class="{ on: passwordStrength >= 1 }"></span><span :class="{ on: passwordStrength >= 2 }"></span><span :class="{ on: passwordStrength >= 3 }"></span></div>
+              <small>{{ password ? passwordHint : "Minimum 8 characters" }}</small>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="register-role">Account type</label>
+            <div class="select-wrap">
+              <select id="register-role" v-model="role"><option value="patient">Patient / Individual</option><option value="doctor">Doctor / Clinician</option></select>
+            </div>
+          </div>
+
+          <label class="terms-row"><input v-model="agreed" type="checkbox" required /><span>I agree to the <button type="button">Terms of Service</button> and <button type="button">Privacy Notice</button>.</span></label>
+          <button class="primary-button" :disabled="loading || !agreed" type="submit">
+            <span v-if="loading" class="spinner"></span>
+            {{ loading ? "Creating account..." : "Create account" }}
+          </button>
+        </form>
+
+        <div v-if="message" class="form-message" :class="{ error }" role="status">{{ message }}</div>
+      </div>
+
+      <p class="security-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.75 2.98 8.2 7 10 4.02-1.8 7-5.25 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></svg>
+        Medivoy keeps your information private and secure
+      </p>
+    </section>
+  </main>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: "blank" });
+import medivoyLogo from "~/assets/images/medivoy-logo.png";
+
+definePageMeta({ layout: false });
 
 const api = useMedivoyApi();
 const auth = useAuthStore();
@@ -307,6 +153,40 @@ const agreed = ref(false);
 const loading = ref(false);
 const message = ref("");
 const error = ref(false);
+const showPassword = ref(false);
+
+const passwordStrength = computed(() => {
+  if (!password.value) return 0;
+  let score = password.value.length >= 8 ? 1 : 0;
+  if (/[A-Z]/.test(password.value) && /[a-z]/.test(password.value)) score++;
+  if (/\d/.test(password.value) && /[^A-Za-z0-9]/.test(password.value)) score++;
+  return score;
+});
+
+const passwordHint = computed(() =>
+  passwordStrength.value === 1
+    ? "Basic"
+    : passwordStrength.value === 2
+      ? "Good"
+      : passwordStrength.value === 3
+        ? "Strong"
+        : "Too short",
+);
+
+const switchTab = (nextTab: "login" | "register") => {
+  tab.value = nextTab;
+  message.value = "";
+  error.value = false;
+  password.value = "";
+};
+
+const readableError = (e: any, fallback: string) => {
+  const apiMessage = e?.data?.message;
+  if (Array.isArray(apiMessage)) return apiMessage.join(". ");
+  if (typeof apiMessage === "string" && !apiMessage.includes("https://")) return apiMessage;
+  if (e?.message && !e.message.includes("fetch")) return e.message;
+  return "We could not connect to Medivoy right now. Please check your connection and try again.";
+};
 
 const setMsg = (msg: string, isError = false) => {
   message.value = msg;
@@ -318,11 +198,14 @@ const submitLogin = async () => {
   message.value = "";
   try {
     const res = await api.login(email.value, password.value);
-    auth.login(res.user, res.access_token);
+    auth.login(
+      { ...(res.user || {}), email: res.user?.email || email.value.trim() },
+      res.access_token,
+    );
     setMsg("Login successful.");
     await router.push("/dashboard");
   } catch (e: any) {
-    setMsg(e?.data?.message || e?.message || "Login failed.", true);
+    setMsg(readableError(e, "Login failed."), true);
   } finally {
     loading.value = false;
   }
@@ -332,12 +215,19 @@ const submitRegister = async () => {
   loading.value = true;
   message.value = "";
   try {
-    const res = await api.register(email.value, password.value, role.value);
-    auth.login(res.user, res.access_token);
+    const res = await api.register(email.value, password.value, role.value, name.value);
+    auth.login(
+      {
+        ...(res.user || {}),
+        name: res.user?.name || name.value.trim(),
+        email: res.user?.email || email.value.trim(),
+      },
+      res.access_token,
+    );
     setMsg("Account created successfully.");
     await router.push("/dashboard");
   } catch (e: any) {
-    setMsg(e?.data?.message || e?.message || "Registration failed.", true);
+    setMsg(readableError(e, "Registration failed."), true);
   } finally {
     loading.value = false;
   }

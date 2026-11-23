@@ -1,577 +1,216 @@
 <template>
-  <div class="report-page">
-    <!-- Header -->
-    <div class="report-header">
-      <NuxtLink to="/reports" class="back-btn">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-        >
-          <path d="M19 12H5M12 5l-7 7 7 7" />
-        </svg>
-        Back to Reports
-      </NuxtLink>
-      <div v-if="report" class="header-actions">
-        <button class="btn-outline" @click="downloadFile">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
-            />
-          </svg>
-          Download
-        </button>
-        <button class="btn-outline" @click="viewFile">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          View File
-        </button>
-      </div>
+  <div class="clinical-report">
+    <div v-if="loading" class="report-loader">
+      <div class="loader-hero"></div>
+      <div class="loader-grid"><span></span><span></span><span></span></div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="loading-card">
-      <div class="skeleton skeleton-heading"></div>
-      <div class="skeleton skeleton-text" style="width: 60%"></div>
-      <div class="skeleton skeleton-text" style="width: 80%"></div>
-      <div class="skeleton skeleton-text" style="width: 50%"></div>
-    </div>
+    <main v-else-if="report" class="report-canvas">
+      <header class="report-topbar">
+        <NuxtLink to="/reports" class="back-control">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          Reports
+        </NuxtLink>
+        <div class="topbar-actions">
+          <button type="button" :disabled="downloading" @click="downloadFile">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg>
+            {{ downloading ? "Preparing..." : "Download" }}
+          </button>
+          <button type="button" class="open-control" @click="viewFile">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            Open original
+          </button>
+        </div>
+      </header>
 
-    <!-- Error -->
-    <div v-else-if="!report" class="empty-state">
-      <svg
-        width="48"
-        height="48"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-      <h3>Report not found</h3>
-      <p>This report may have been deleted or you may not have access to it.</p>
-      <NuxtLink to="/reports" class="btn-primary">Go to Reports</NuxtLink>
-    </div>
+      <p v-if="downloadError" class="download-error" role="alert">{{ downloadError }}</p>
 
-    <!-- Report Content -->
-    <div v-else class="report-content">
-      <!-- Summary Card -->
-      <div class="card summary-card">
-        <div class="summary-top">
-          <div class="summary-info">
-            <div class="report-type-badge" :class="'type-' + reportType">
-              {{ reportType.toUpperCase() }}
-            </div>
-            <h1 class="report-title">{{ report.title }}</h1>
-            <p class="report-meta">
-              <span
-                class="status-dot"
-                :class="'status-' + report.status"
-              ></span>
-              {{ capitalize(report.status) }}
-              <span class="meta-sep">·</span>
-              {{ formatDate(report.createdAt) }}
-              <template v-if="report.forMember">
-                <span class="meta-sep">·</span>
-                {{ report.forMember }}
-              </template>
-              <template v-if="confidencePercent != null">
-                <span class="meta-sep">·</span>
-                {{ confidencePercent }}% confidence
-              </template>
-            </p>
+      <section class="report-identity">
+        <div class="identity-copy">
+          <div class="identity-kicker">
+            <span>{{ reportType }}</span>
+            <i></i>
+            <span>{{ capitalize(report.status) }}</span>
           </div>
-          <div v-if="healthScore != null" class="risk-score-ring">
-            <svg width="80" height="80" viewBox="0 0 80 80">
-              <circle
-                cx="40"
-                cy="40"
-                r="34"
-                fill="none"
-                stroke="var(--ring-bg)"
-                stroke-width="7"
-              />
-              <circle
-                cx="40"
-                cy="40"
-                r="34"
-                fill="none"
-                :stroke="healthColor(healthScore)"
-                stroke-width="7"
-                stroke-linecap="round"
-                :stroke-dasharray="213.6"
-                :stroke-dashoffset="213.6 - (213.6 * healthScore) / 100"
-                transform="rotate(-90 40 40)"
-              />
-            </svg>
-            <span
-              class="risk-number"
-              :style="{ color: healthColor(healthScore) }"
-              >{{ healthScore }}</span
-            >
-            <span class="risk-label">Health</span>
+          <h1>{{ report.title }}</h1>
+          <div class="identity-meta">
+            <span><small>Issued</small>{{ formatDate(report.createdAt) }}</span>
+            <span v-if="report.forMember"><small>Patient</small>{{ report.forMember }}</span>
+            <span v-if="confidencePercent != null"><small>Confidence</small>{{ confidencePercent }}%</span>
           </div>
         </div>
-        <p class="summary-text">{{ report.summary }}</p>
-      </div>
-
-      <!-- Critical Findings -->
-      <div v-if="report.criticalFindings?.length" class="card alert-card alert-critical">
-        <h2 class="card-title">Critical Findings</h2>
-        <ul class="rec-list">
-          <li v-for="c in report.criticalFindings" :key="c">{{ c }}</li>
-        </ul>
-      </div>
-
-      <!-- Warnings -->
-      <div v-if="report.warnings?.length" class="card alert-card alert-warning">
-        <h2 class="card-title">Warnings</h2>
-        <ul class="rec-list">
-          <li v-for="w in report.warnings" :key="w">{{ w }}</li>
-        </ul>
-      </div>
-
-      <!-- Key Insights & Positive Findings -->
-      <div
-        v-if="report.keyInsights?.length || report.positiveFindings?.length"
-        class="even-col"
-      >
-        <div v-if="report.keyInsights?.length" class="card">
-          <h2 class="card-title">Key Insights</h2>
-          <ul class="rec-list">
-            <li v-for="k in report.keyInsights" :key="k">{{ k }}</li>
-          </ul>
+        <div v-if="healthScore != null" class="identity-score">
+          <span>Health index</span>
+          <strong>{{ healthScore }}</strong>
+          <div class="score-dots" aria-hidden="true">
+            <i v-for="n in 10" :key="n" :class="{ on: n <= Math.ceil(healthScore / 10) }"></i>
+          </div>
         </div>
-        <div v-if="report.positiveFindings?.length" class="card positive-card">
-          <h2 class="card-title">Positive Findings</h2>
-          <ul class="rec-list">
-            <li v-for="p in report.positiveFindings" :key="p">{{ p }}</li>
-          </ul>
+      </section>
+
+      <section class="summary-band">
+        <span class="band-number">01</span>
+        <div>
+          <p>Executive summary</p>
+          <h2>What we found</h2>
+          <blockquote>{{ report.summary || "No summary is available for this report." }}</blockquote>
         </div>
+      </section>
+
+      <section v-if="report.criticalFindings?.length" class="alert-band critical-band">
+        <span>Priority</span>
+        <ul><li v-for="item in report.criticalFindings" :key="item">{{ item }}</li></ul>
+      </section>
+
+      <section v-if="report.warnings?.length" class="alert-band warning-band">
+        <span>Review</span>
+        <ul><li v-for="item in report.warnings" :key="item">{{ item }}</li></ul>
+      </section>
+
+      <div v-if="riskCategoryList.length || report.missingImportantMarkers?.length" class="bento-row">
+        <section v-if="riskCategoryList.length" class="panel risk-panel">
+          <header><span>02</span><div><p>Risk assessment</p><h2>Health risk profile</h2></div></header>
+          <div class="risk-list">
+            <article v-for="risk in riskCategoryList" :key="risk.key">
+              <div><span>{{ risk.label }}</span><strong>{{ risk.value }}%</strong></div>
+              <div class="risk-line"><i :style="{ width: `${risk.value}%`, background: riskColor(risk.value) }"></i></div>
+            </article>
+          </div>
+        </section>
+
+        <section v-if="report.missingImportantMarkers?.length" class="panel test-panel">
+          <header><span>03</span><div><p>Next investigations</p><h2>Suggested tests</h2></div></header>
+          <ol>
+            <li v-for="(test, index) in report.missingImportantMarkers" :key="test">
+              <span>{{ String(index + 1).padStart(2, "0") }}</span>
+              <p>{{ test }}</p>
+            </li>
+          </ol>
+          <small>Discuss these tests with a qualified healthcare professional.</small>
+        </section>
       </div>
 
-      <div class="two-col">
-        <!-- Findings -->
-        <div v-if="report.findings?.length" class="card">
-          <h2 class="card-title">Findings</h2>
+      <section v-if="hasRecommendations" class="panel recommendation-panel">
+        <header><span>04</span><div><p>Personal action plan</p><h2>Recommendations</h2></div></header>
+        <div class="recommendation-grid">
+          <article v-for="section in recommendationSections" v-show="section.items.length" :key="section.key">
+            <span class="recommendation-letter">{{ section.letter }}</span>
+            <div><h3>{{ section.title }}</h3><ul><li v-for="item in section.items" :key="item">{{ item }}</li></ul></div>
+          </article>
+        </div>
+      </section>
+
+      <section v-if="report.findings?.length" class="panel findings-panel">
+          <header><span>05</span><div><p>Detailed interpretation</p><h2>Clinical findings</h2></div></header>
           <div class="findings-list">
-            <div
-              v-for="f in report.findings"
-              :key="f.label"
-              class="finding-item"
-              :class="'finding-' + normalizeStatus(f.status)"
-            >
-              <div class="finding-header">
-                <span class="finding-label">{{ f.label }}</span>
-                <span
-                  class="finding-badge"
-                  :class="'badge-' + normalizeStatus(f.status)"
-                  >{{ statusLabel(normalizeStatus(f.status)) }}</span
-                >
+            <article v-for="finding in report.findings" :key="finding.label">
+              <div class="finding-head">
+                <div><h3>{{ finding.label }}</h3><strong v-if="finding.value">{{ finding.value }}</strong></div>
+                <span :class="`finding-status ${normalizeStatus(finding.status)}`">{{ statusLabel(normalizeStatus(finding.status)) }}</span>
               </div>
-              <p v-if="f.value" class="finding-value">{{ f.value }}</p>
-              <p v-if="f.whyItMatters" class="finding-why">
-                {{ f.whyItMatters }}
-              </p>
-              <div v-if="f.possibleCauses?.length" class="finding-sub">
-                <p class="finding-sub-title">Possible causes</p>
-                <ul class="rec-list">
-                  <li v-for="c in f.possibleCauses" :key="c">{{ c }}</li>
-                </ul>
-              </div>
-              <div v-if="f.recommendedActions?.length" class="finding-sub">
-                <p class="finding-sub-title">What to do</p>
-                <ul class="rec-list">
-                  <li v-for="a in f.recommendedActions" :key="a">{{ a }}</li>
-                </ul>
-              </div>
-              <div v-if="f.severityScore != null" class="severity-bar-wrap">
-                <div class="severity-bar">
-                  <div
-                    class="severity-fill"
-                    :style="{
-                      width: severityPercent(f.severityScore) + '%',
-                      background: riskColor(severityPercent(f.severityScore)),
-                    }"
-                  ></div>
-                </div>
-                <span class="severity-num">{{ severityPercent(f.severityScore) }}</span>
-              </div>
-            </div>
+              <p v-if="finding.whyItMatters" class="finding-body">{{ finding.whyItMatters }}</p>
+              <div v-if="finding.possibleCauses?.length" class="finding-detail"><span>Possible causes</span><p>{{ finding.possibleCauses.join(" · ") }}</p></div>
+              <div v-if="finding.recommendedActions?.length" class="finding-detail"><span>Recommended action</span><p>{{ finding.recommendedActions.join(" · ") }}</p></div>
+            </article>
           </div>
-        </div>
+      </section>
 
-        <!-- Right Column -->
-        <div class="right-col">
-          <!-- Markers -->
-          <div v-if="report.markers?.length" class="card">
-            <h2 class="card-title">Markers</h2>
-            <table class="markers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Value</th>
-                  <th>Unit</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="m in report.markers" :key="m.name">
-                  <td>
-                    {{ m.name }}
-                    <span v-if="m.referenceRange" class="range-text"
-                      >Range: {{ m.referenceRange }}</span
-                    >
-                  </td>
-                  <td>
-                    <strong>{{ m.value }}</strong>
-                  </td>
-                  <td class="unit-cell">{{ m.unit || "—" }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Recommendations -->
-          <div v-if="hasRecommendations" class="card">
-            <h2 class="card-title">Recommendations</h2>
-            <div class="recs-grid">
-              <div
-                v-if="report.recommendations?.diet?.length"
-                class="rec-section"
-              >
-                <div class="rec-icon rec-diet">🥗</div>
-                <div>
-                  <p class="rec-heading">Diet</p>
-                  <ul class="rec-list">
-                    <li v-for="r in report.recommendations.diet" :key="r">
-                      {{ r }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div
-                v-if="report.recommendations?.exercise?.length"
-                class="rec-section"
-              >
-                <div class="rec-icon rec-exercise">🏃</div>
-                <div>
-                  <p class="rec-heading">Exercise</p>
-                  <ul class="rec-list">
-                    <li v-for="r in report.recommendations.exercise" :key="r">
-                      {{ r }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div
-                v-if="report.recommendations?.sleep?.length"
-                class="rec-section"
-              >
-                <div class="rec-icon rec-sleep">😴</div>
-                <div>
-                  <p class="rec-heading">Sleep</p>
-                  <ul class="rec-list">
-                    <li v-for="r in report.recommendations.sleep" :key="r">
-                      {{ r }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div
-                v-if="report.recommendations?.supplements?.length"
-                class="rec-section"
-              >
-                <div class="rec-icon rec-supp">💊</div>
-                <div>
-                  <p class="rec-heading">Supplements</p>
-                  <ul class="rec-list">
-                    <li
-                      v-for="r in report.recommendations.supplements"
-                      :key="r"
-                    >
-                      {{ r }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div
-                v-if="report.recommendations?.followUp?.length"
-                class="rec-section rec-full"
-              >
-                <div class="rec-icon rec-followup">📋</div>
-                <div>
-                  <p class="rec-heading">Follow-Up</p>
-                  <ul class="rec-list">
-                    <li v-for="r in report.recommendations.followUp" :key="r">
-                      {{ r }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div v-if="report.keyInsights?.length || report.positiveFindings?.length" class="bento-row">
+        <section v-if="report.keyInsights?.length" class="panel">
+          <header><span>06</span><div><p>At a glance</p><h2>Key insights</h2></div></header>
+          <ul class="editorial-list"><li v-for="item in report.keyInsights" :key="item">{{ item }}</li></ul>
+        </section>
+        <section v-if="report.positiveFindings?.length" class="panel positive-panel">
+          <header><span>07</span><div><p>Healthy indicators</p><h2>Positive findings</h2></div></header>
+          <ul class="editorial-list"><li v-for="item in report.positiveFindings" :key="item">{{ item }}</li></ul>
+        </section>
       </div>
 
-      <!-- Risk Categories & Missing Markers -->
-      <div
-        v-if="riskCategoryList.length || report.missingImportantMarkers?.length"
-        class="even-col"
-      >
-        <div v-if="riskCategoryList.length" class="card">
-          <h2 class="card-title">Risk Breakdown</h2>
-          <div class="risk-cat-list">
-            <div v-for="rc in riskCategoryList" :key="rc.key" class="risk-cat">
-              <span class="risk-cat-label">{{ rc.label }}</span>
-              <div class="severity-bar-wrap risk-cat-bar">
-                <div class="severity-bar">
-                  <div
-                    class="severity-fill"
-                    :style="{ width: rc.value + '%', background: riskColor(rc.value) }"
-                  ></div>
-                </div>
-                <span class="severity-num">{{ rc.value }}</span>
-              </div>
-            </div>
-          </div>
+      <section v-if="report.markers?.length" class="panel markers-panel">
+        <header><span>08</span><div><p>Laboratory values</p><h2>Markers</h2></div></header>
+        <div class="marker-scroll">
+          <table>
+            <thead><tr><th>Marker</th><th>Result</th><th>Reference</th></tr></thead>
+            <tbody>
+              <tr v-for="marker in report.markers" :key="marker.name">
+                <td>{{ marker.name }}</td>
+                <td><strong>{{ marker.value }}</strong> <span>{{ marker.unit }}</span></td>
+                <td>{{ marker.referenceRange || "—" }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div v-if="report.missingImportantMarkers?.length" class="card">
-          <h2 class="card-title">Suggested Additional Tests</h2>
-          <p class="card-note">
-            These tests weren't in this report but would help complete the picture.
-          </p>
-          <div class="chip-list">
-            <span
-              v-for="m in report.missingImportantMarkers"
-              :key="m"
-              class="detail-chip"
-              >{{ m }}</span
-            >
-          </div>
-        </div>
-      </div>
+      </section>
 
-      <!-- Pattern Analysis -->
-      <div v-if="report.patternAnalysis?.length" class="card">
-        <h2 class="card-title">Pattern Analysis</h2>
-        <div class="findings-list">
-          <div
-            v-for="p in report.patternAnalysis"
-            :key="p.title"
-            class="finding-item"
-            :class="'outlook-' + p.severity"
-          >
-            <div class="finding-header">
-              <span class="finding-label">{{ p.title }}</span>
-              <span class="finding-badge" :class="'outlook-badge-' + p.severity">{{
-                capitalize(p.severity)
-              }}</span>
-            </div>
-            <p class="finding-why">{{ p.insight }}</p>
-          </div>
+      <section v-if="report.patternAnalysis?.length" class="panel">
+        <header><span>09</span><div><p>Interconnected results</p><h2>Pattern analysis</h2></div></header>
+        <div class="card-grid">
+          <article v-for="pattern in report.patternAnalysis" :key="pattern.title">
+            <div><h3>{{ pattern.title }}</h3><span>{{ capitalize(pattern.severity) }}</span></div>
+            <p>{{ pattern.insight }}</p>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <!-- Long-Term Outlook & 5-Year Plan -->
-      <div
-        v-if="report.longTermInsights?.length || report.fiveYearAnswers?.length"
-        class="even-col"
-      >
-        <div v-if="report.longTermInsights?.length" class="card">
-          <h2 class="card-title">Long-Term Outlook</h2>
-          <div class="findings-list">
-            <div
-              v-for="lt in report.longTermInsights"
-              :key="lt.title"
-              class="finding-item"
-              :class="'outlook-' + lt.outlook"
-            >
-              <div class="finding-header">
-                <span class="finding-label">{{ lt.title }}</span>
-                <span class="finding-badge" :class="'outlook-badge-' + lt.outlook"
-                  >{{ lt.horizonYears }}-year · {{ capitalize(lt.outlook) }} risk</span
-                >
-              </div>
-              <p class="finding-why">{{ lt.insight }}</p>
-            </div>
-          </div>
-        </div>
-        <div v-if="report.fiveYearAnswers?.length" class="card">
-          <h2 class="card-title">5-Year Plan</h2>
+      <div v-if="report.longTermInsights?.length || report.fiveYearAnswers?.length" class="bento-row">
+        <section v-if="report.longTermInsights?.length" class="panel">
+          <header><span>10</span><div><p>Future outlook</p><h2>Long-term insights</h2></div></header>
           <div class="timeline">
-            <div v-for="y in report.fiveYearAnswers" :key="y.year" class="timeline-item">
-              <div class="timeline-year" :class="'outlook-badge-' + y.outlook">
-                Y{{ y.year }}
-              </div>
-              <div>
-                <p class="timeline-question">{{ y.question }}</p>
-                <p class="finding-why">{{ y.answer }}</p>
-              </div>
-            </div>
+            <article v-for="item in report.longTermInsights" :key="item.title">
+              <span>{{ item.horizonYears }} year horizon</span><h3>{{ item.title }}</h3><p>{{ item.insight }}</p>
+            </article>
           </div>
-        </div>
+        </section>
+        <section v-if="report.fiveYearAnswers?.length" class="panel">
+          <header><span>11</span><div><p>Forward plan</p><h2>Five-year roadmap</h2></div></header>
+          <div class="timeline">
+            <article v-for="item in report.fiveYearAnswers" :key="item.year">
+              <span>Year {{ item.year }}</span><h3>{{ item.question }}</h3><p>{{ item.answer }}</p>
+            </article>
+          </div>
+        </section>
       </div>
 
-      <!-- DNA Traits -->
-      <div v-if="report.dnaTraits?.length" class="card">
-        <h2 class="card-title">Genetic Traits</h2>
-        <div class="findings-list">
-          <div v-for="t in report.dnaTraits" :key="t.trait" class="finding-item">
-            <div class="finding-header">
-              <span class="finding-label">{{ t.trait }}</span>
-              <span class="finding-badge badge-borderline">{{ t.result }}</span>
-            </div>
-            <p class="finding-why">{{ t.insight }}</p>
-            <p v-if="t.basedOn?.length" class="range-text">
-              Based on: {{ t.basedOn.join(", ") }}
-            </p>
-          </div>
+      <section v-if="report.dnaTraits?.length" class="panel">
+        <header><span>12</span><div><p>Genetic profile</p><h2>DNA traits</h2></div></header>
+        <div class="card-grid">
+          <article v-for="trait in report.dnaTraits" :key="trait.trait">
+            <div><h3>{{ trait.trait }}</h3><span>{{ trait.result }}</span></div><p>{{ trait.insight }}</p>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <!-- Medicine & Supplement Suggestions -->
-      <div v-if="displayedMedicineSuggestions.length" class="card medicine-card">
-        <div class="disclaimer-inline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span><strong>AI Suggestion — Consult a doctor before taking any medicine.</strong> These are AI-generated recommendations based on your report, cross-checked against live pharmacy stock where available. They are NOT a medical prescription. Always consult a qualified healthcare professional before starting any medication or supplement.</span>
+      <section v-if="displayedMedicineSuggestions.length" class="panel medicine-panel">
+        <header><span>13</span><div><p>Treatment considerations</p><h2>Medicines & supplements</h2></div></header>
+        <div class="medical-disclaimer">
+          <strong>Professional guidance required</strong>
+          <p>These AI-generated suggestions are not a prescription. Consult a qualified healthcare professional before starting any medicine or supplement.</p>
         </div>
+        <div class="medicine-grid">
+          <article v-for="(medicine, index) in displayedMedicineSuggestions" :key="index">
+            <div><span>{{ capitalize(medicine.type) }}</span><span v-if="medicine.live?.isPrescriptionRequired ?? medicine.isPrescriptionRequired" class="rx">Prescription</span></div>
+            <h3>{{ medicine.live?.brandName || medicine.name }}</h3>
+            <p v-if="medicine.live?.genericName">{{ medicine.live.genericName }}</p>
+            <p>{{ medicine.reason }}</p>
+            <small v-if="medicine.evidence">{{ medicine.evidence }}</small>
+          </article>
+        </div>
+      </section>
 
-        <h2 class="card-title">Suggested Medicines & Supplements</h2>
-        <div class="med-suggestions-list">
-          <div v-for="(med, idx) in displayedMedicineSuggestions" :key="idx" class="med-suggestion-item" :class="'med-type-' + med.type">
-            <div class="med-suggestion-header">
-              <span class="med-suggestion-type">{{ med.type === 'medicine' ? '💊' : med.type === 'vitamin' ? '💊' : '🌿' }} {{ capitalize(med.type) }}</span>
-              <span v-if="med.live?.isPrescriptionRequired ?? med.isPrescriptionRequired" class="rx-badge-sm">Requires Prescription</span>
-            </div>
-            <h3 class="med-suggestion-name">{{ med.live?.brandName || med.name }}</h3>
-            <p v-if="med.live?.genericName" class="med-suggestion-generic">{{ med.live.genericName }}</p>
-            <p class="med-suggestion-reason">{{ med.reason }}</p>
-            <p v-if="med.evidence" class="med-suggestion-evidence">Evidence: {{ med.evidence }}</p>
-            <div v-if="med.dosage || med.duration" class="med-suggestion-details">
-              <span v-if="med.dosage" class="detail-chip">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
-                {{ med.dosage }}
-              </span>
-              <span v-if="med.duration" class="detail-chip">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                {{ med.duration }}
-              </span>
-            </div>
-            <div v-if="med.live?.sellPricePaise != null" class="med-suggestion-price">
-              <span class="price">₹{{ (med.live.sellPricePaise / 100).toFixed(2) }}</span>
-              <span v-if="med.live.mrpPaise" class="mrp">MRP ₹{{ (med.live.mrpPaise / 100).toFixed(2) }}</span>
-              <span v-if="med.live.packText" class="pack">{{ med.live.packText }}</span>
-            </div>
-            <a
-              v-if="med.live?.slug"
-              :href="`https://pharmacy.medivoy.ae/product/${med.live.slug}`"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn-primary btn-sm buy-btn"
-            >
-              Buy Now →
-            </a>
-          </div>
-        </div>
-        <div class="pharmacy-cta">
-          <NuxtLink to="/pharmacy" class="btn-primary btn-sm">
-            Search in Pharmacy →
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- Suggested Doctors -->
-      <div v-if="pharmacySuggestions?.doctorSuggestions?.length" class="card medicine-card">
-        <h2 class="card-title">Suggested Doctors</h2>
-        <div class="doctor-list">
-          <div v-for="doc in pharmacySuggestions.doctorSuggestions" :key="doc.doctorId || doc.id" class="doctor-card">
-            <div class="doc-avatar">{{ (doc.name || 'Dr. ')[0] }}</div>
-            <div class="doc-info">
-              <p class="doc-name">{{ doc.name || 'Doctor' }}</p>
-              <p class="doc-spec">{{ doc.specialty || doc.specialties?.join(', ') || 'General Physician' }}</p>
-              <p v-if="doc.experience" class="doc-exp">{{ doc.experience }} years experience</p>
-            </div>
-          </div>
-        </div>
-        <div class="pharmacy-cta">
-          <NuxtLink to="/pharmacy" class="btn-primary btn-sm">
-            Find more doctors →
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- Document Preview -->
-      <div v-if="resolvedFileUrl" class="card preview-card">
-        <div class="preview-header">
-          <h2 class="card-title" style="margin: 0">Document Preview</h2>
-          <a :href="resolvedFileUrl" target="_blank" class="btn-outline btn-sm"
-            >Open in tab ↗</a
-          >
-        </div>
-        <div class="preview-frame">
-          <iframe
-            v-if="isPdf"
-            :src="resolvedFileUrl"
-            class="pdf-frame"
-            title="Report document"
-          ></iframe>
-          <img
-            v-else-if="isImage"
-            :src="resolvedFileUrl"
-            class="img-preview"
-            alt="Report document"
-          />
-          <div v-else class="preview-unavailable">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            <p>Preview not available for this file type.</p>
-            <a :href="resolvedFileUrl" target="_blank" class="btn-primary"
-              >Download File</a
-            >
-          </div>
-        </div>
-      </div>
-
-      <!-- Extracted Text -->
-      <details v-if="report.extractedText" class="card extracted-card">
-        <summary class="card-title extracted-summary">Extracted Text</summary>
-        <pre class="extracted-text">{{ report.extractedText }}</pre>
+      <details v-if="report.extractedText" class="source-panel">
+        <summary><span><strong>Source document</strong><small>View extracted text</small></span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <pre>{{ report.extractedText }}</pre>
       </details>
-    </div>
+
+      <footer class="report-footer"><span>Medivoy</span><p>Support document only. It does not replace professional medical diagnosis or care.</p></footer>
+    </main>
+
+    <main v-else class="empty-report">
+      <div>Report unavailable</div>
+      <h1>We could not find this report</h1>
+      <p>It may have been removed or is not available to your account.</p>
+      <NuxtLink to="/reports">Back to reports</NuxtLink>
+    </main>
   </div>
 </template>
 
@@ -581,1063 +220,242 @@ const api = useMedivoyApi();
 const report = ref<any>(null);
 const loading = ref(true);
 const pharmacySuggestions = ref<any>(null);
+const downloading = ref(false);
+const downloadError = ref("");
 
-// Uploads are served from the API host, outside the /api prefix.
-const API_BASE = String(useRuntimeConfig().public.apiBase || "https://api-geno.medivoy.ae/api")
-  .replace(/\/api\/?$/, "");
+const API_BASE = String(useRuntimeConfig().public.apiBase || "https://api-geno.medivoy.ae/api").replace(/\/api\/?$/, "");
 
-const reportType = computed(() =>
-  String(report.value?.reportType || report.value?.type || "other").toLowerCase(),
-);
-
-// Older reports store the health score only in riskScore.
+const reportType = computed(() => String(report.value?.reportType || report.value?.type || "Clinical report").replace(/[_-]/g, " "));
 const healthScore = computed(() => {
-  const v = report.value?.overallHealthScore ?? report.value?.riskScore;
-  return v == null ? null : Math.round(Number(v));
+  const value = report.value?.overallHealthScore ?? report.value?.riskScore;
+  return value == null ? null : Math.min(100, Math.max(0, Math.round(Number(value))));
 });
-
-// The AI returns confidence either as 0-1 or 0-100.
 const confidencePercent = computed(() => {
-  const v = Number(report.value?.confidenceScore);
-  if (!v) return null;
-  return Math.round(v <= 1 ? v * 100 : v);
+  const value = Number(report.value?.confidenceScore);
+  return value ? Math.round(value <= 1 ? value * 100 : value) : null;
 });
-
 const riskCategoryList = computed(() => {
-  const rc = report.value?.riskCategories || {};
-  const entries = Object.entries(rc).filter(([, v]) => typeof v === "number");
-  // Scores come back as 0-10 or 0-100 depending on the report.
-  const scale = entries.every(([, v]) => (v as number) <= 10) ? 10 : 1;
-  return entries.map(([key, v]) => ({
-    key,
-    label: humanize(key.replace(/Risk$/, "")),
-    value: Math.min(100, Math.round((v as number) * scale)),
-  }));
+  const entries = Object.entries(report.value?.riskCategories || {}).filter(([, value]) => typeof value === "number");
+  const scale = entries.every(([, value]) => (value as number) <= 10) ? 10 : 1;
+  return entries.map(([key, value]) => ({ key, label: humanize(key.replace(/Risk$/, "")), value: Math.min(100, Math.round((value as number) * scale)) }));
 });
-
-const displayedMedicineSuggestions = computed(() => {
-  if (pharmacySuggestions.value?.medicineSuggestions?.length) {
-    return pharmacySuggestions.value.medicineSuggestions;
-  }
-  return report.value?.medicineSuggestions || [];
-});
-
-onMounted(async () => {
-  try {
-    report.value = await api.getReport(route.params.id as string);
-  } catch {
-    report.value = null;
-  } finally {
-    loading.value = false;
-  }
-
-  if (report.value?.id) {
-    try {
-      pharmacySuggestions.value = await api.getPharmacySuggestions(report.value.id);
-    } catch {
-      pharmacySuggestions.value = null;
-    }
-  }
-});
-
+const displayedMedicineSuggestions = computed(() => pharmacySuggestions.value?.medicineSuggestions?.length ? pharmacySuggestions.value.medicineSuggestions : report.value?.medicineSuggestions || []);
 const resolvedFileUrl = computed(() => {
   const raw = report.value?.fileUrl || "";
   if (!raw) return "";
-  if (raw.startsWith("http")) return raw;
-  // strip leading slash if present then prepend API base
-  const clean = raw.startsWith("/") ? raw : "/" + raw;
-  return `${API_BASE}${clean}`;
+  return raw.startsWith("http") ? raw : `${API_BASE}${raw.startsWith("/") ? raw : `/${raw}`}`;
+});
+const hasRecommendations = computed(() => !!report.value?.recommendations && ["diet", "exercise", "sleep", "supplements", "followUp"].some((key) => report.value.recommendations[key]?.length));
+const recommendationSections = computed(() => [
+  { key: "diet", letter: "A", title: "Nutrition", items: report.value?.recommendations?.diet || [] },
+  { key: "exercise", letter: "B", title: "Movement", items: report.value?.recommendations?.exercise || [] },
+  { key: "sleep", letter: "C", title: "Sleep", items: report.value?.recommendations?.sleep || [] },
+  { key: "supplements", letter: "D", title: "Supplements", items: report.value?.recommendations?.supplements || [] },
+  { key: "followUp", letter: "E", title: "Follow-up", items: report.value?.recommendations?.followUp || [] },
+]);
+
+onMounted(async () => {
+  try { report.value = await api.getReport(route.params.id as string); } catch { report.value = null; } finally { loading.value = false; }
+  if (report.value?.id) {
+    try { pharmacySuggestions.value = await api.getPharmacySuggestions(report.value.id); } catch { pharmacySuggestions.value = null; }
+  }
 });
 
-const isPdf = computed(() =>
-  resolvedFileUrl.value.toLowerCase().includes(".pdf"),
-);
-const isImage = computed(() =>
-  /\.(png|jpe?g|gif|webp|svg)$/i.test(resolvedFileUrl.value),
-);
-
-const hasRecommendations = computed(() => {
-  const r = report.value?.recommendations;
-  if (!r) return false;
-  return ["diet", "exercise", "sleep", "supplements", "followUp"].some(
-    (k) => r[k]?.length,
-  );
-});
-
-function formatDate(dt: string) {
-  if (!dt) return "";
-  return new Date(dt).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+function formatDate(value: string) { return value ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : ""; }
+function capitalize(value: string) { return value ? value.charAt(0).toUpperCase() + value.slice(1) : ""; }
+function humanize(value: string) { return capitalize(value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim()); }
+function normalizeStatus(value: string) {
+  const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
+  return ({ mildhigh: "mild-high", moderatehigh: "moderate-high", criticalhigh: "critical", high: "moderate-high", mildlow: "mild-low", moderatelow: "moderate-low", criticallow: "critical", low: "mild-low" } as Record<string, string>)[key] || key;
 }
-
-function capitalize(s: string) {
-  if (!s) return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
+function statusLabel(value: string) {
+  return ({ normal: "Normal", borderline: "Borderline", "mild-high": "Mild high", "moderate-high": "Moderate high", critical: "Critical", "mild-low": "Mild low", "moderate-low": "Moderate low" } as Record<string, string>)[value] || humanize(value);
 }
+function riskColor(score: number) { return score >= 75 ? "#b85a68" : score >= 50 ? "#c58a47" : score >= 25 ? "#cbb04f" : "#4c9579"; }
 
-function humanize(s: string) {
-  return capitalize(
-    s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase(),
-  );
+async function downloadFile() {
+  if (!resolvedFileUrl.value || downloading.value) return;
+  downloading.value = true; downloadError.value = "";
+  try {
+    const response = await fetch(resolvedFileUrl.value);
+    if (!response.ok) throw new Error(`Unable to download the file (${response.status})`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const sourceName = resolvedFileUrl.value.split("/").pop()?.split("?")[0] || "";
+    const extension = sourceName.includes(".") ? `.${sourceName.split(".").pop()}` : ".pdf";
+    const safeName = String(report.value?.title || "Medivoy-report").replace(/[<>:"/\\|?*\x00-\x1F]/g, "-").replace(/\s+/g, "-");
+    const filename = /\.[a-z0-9]+$/i.test(safeName) ? safeName : `${safeName}${extension}`;
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) { downloadError.value = error instanceof Error ? error.message : "Unable to download this report."; }
+  finally { downloading.value = false; }
 }
-
-// The backend sends statuses like "mildhigh"; styles use "mild_high".
-function normalizeStatus(s: string) {
-  const key = String(s || "").toLowerCase().replace(/[^a-z]/g, "");
-  const map: Record<string, string> = {
-    mildhigh: "mild_high",
-    moderatehigh: "moderate_high",
-    criticalhigh: "critical_high",
-    high: "moderate_high",
-    mildlow: "mild_low",
-    moderatelow: "moderate_low",
-    criticallow: "critical_low",
-    low: "mild_low",
-  };
-  return map[key] || key;
-}
-
-function statusLabel(s: string) {
-  const map: Record<string, string> = {
-    normal: "Normal",
-    borderline: "Borderline",
-    mild_high: "Mild High",
-    moderate_high: "Moderate High",
-    critical_high: "Critical",
-    mild_low: "Mild Low",
-    moderate_low: "Moderate Low",
-    critical_low: "Critical Low",
-  };
-  return map[s] || humanize(s);
-}
-
-// Severity comes back as 0-10 or 0-100; show it as a percentage.
-function severityPercent(score: number) {
-  const n = Number(score) || 0;
-  return Math.min(100, Math.round(n <= 10 ? n * 10 : n));
-}
-
-function riskColor(score: number) {
-  if (score >= 75) return "#e53935";
-  if (score >= 50) return "#fb8c00";
-  if (score >= 25) return "#fdd835";
-  return "#43a047";
-}
-
-function healthColor(score: number) {
-  return riskColor(100 - score);
-}
-
-function downloadFile() {
-  if (!resolvedFileUrl.value) return;
-  const a = document.createElement("a");
-  a.href = resolvedFileUrl.value;
-  a.download = report.value?.title || "report";
-  a.target = "_blank";
-  a.click();
-}
-
-function viewFile() {
-  if (!resolvedFileUrl.value) return;
-  window.open(resolvedFileUrl.value, "_blank");
-}
+function viewFile() { if (resolvedFileUrl.value) window.open(resolvedFileUrl.value, "_blank", "noopener"); }
 </script>
 
 <style scoped>
-.report-page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+.clinical-report {
+  --ink: #1b2a43;
+  --muted: #738096;
+  --line: #e3e8ef;
+  --paper: #fbfcfe;
+  --navy: #14284a;
+  --blue: #3f74ad;
+  min-height: calc(100vh - 72px);
+  margin: -24px -32px -24px;
+  background: #f3f6fa;
+  color: var(--ink);
+  font-family: Poppins, system-ui, sans-serif;
 }
-
-.report-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  text-decoration: none;
-  padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.625rem;
-  background: #fff;
-  transition: all 0.15s;
-}
-.back-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-}
-.header-actions {
-  display: flex;
-  gap: 0.625rem;
-}
-
-.btn-outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #374151;
-  padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.625rem;
-  background: #fff;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-decoration: none;
-}
-.btn-outline:hover {
-  background: #f9fafb;
-}
-.btn-outline.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #fff;
-  padding: 0.625rem 1.125rem;
-  border: none;
-  border-radius: 0.625rem;
-  background: #01696f;
-  cursor: pointer;
-  transition: background 0.15s;
-  text-decoration: none;
-}
-.btn-primary:hover {
-  background: #0c4e54;
-}
-
-/* Cards */
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.25rem;
-}
-.card-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 1rem;
-}
-
-/* Loading */
-.loading-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
-  padding: 2rem;
-}
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-.skeleton {
-  background: linear-gradient(90deg, #f3f4f6 25%, #e9eaec 50%, #f3f4f6 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 0.375rem;
-}
-.skeleton-heading {
-  height: 1.5rem;
-  width: 40%;
-  margin-bottom: 1rem;
-}
-.skeleton-text {
-  height: 1rem;
-  margin-bottom: 0.625rem;
-}
-
-/* Empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #6b7280;
-}
-.empty-state svg {
-  margin-bottom: 1rem;
-  color: #d1d5db;
-}
-.empty-state h3 {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 0.5rem;
-}
-.empty-state p {
-  max-width: 36ch;
-  margin-bottom: 1.5rem;
-  font-size: 0.9375rem;
-}
-
-/* Summary */
-.summary-card {
-  margin-bottom: 1.25rem;
-}
-.summary-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-.report-type-badge {
-  display: inline-block;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-  margin-bottom: 0.625rem;
-}
-.type-blood {
-  background: #fee2e2;
-  color: #991b1b;
-}
-.type-dna {
-  background: #dbeafe;
-  color: #1e40af;
-}
-.type-other {
-  background: #f3e8ff;
-  color: #6b21a8;
-}
-
-.report-title {
-  font-size: 1.375rem;
-  font-weight: 800;
-  color: #111827;
-  margin: 0 0 0.5rem;
-  word-break: break-word;
-}
-.report-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-  flex-wrap: wrap;
-}
-.meta-sep {
-  color: #d1d5db;
-}
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.status-done {
-  background: #22c55e;
-}
-.status-error {
-  background: #ef4444;
-}
-.status-pending,
-.status-processing {
-  background: #f59e0b;
-}
-.summary-text {
-  font-size: 0.9375rem;
-  color: #374151;
-  line-height: 1.65;
-}
-
-/* Risk ring */
-.risk-score-ring {
+.clinical-report, .clinical-report * { box-sizing: border-box; font-family: Poppins, system-ui, sans-serif; }
+.report-canvas { max-width: 1180px; margin: 0 auto; padding: 24px clamp(18px, 3vw, 44px) 32px; }
+.report-topbar { display:flex; align-items:center; justify-content:space-between; height:56px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+.back-control, .topbar-actions button { display:inline-flex; height:38px; align-items:center; justify-content:center; gap:7px; border:1px solid var(--line); border-radius:8px; background:#fff; color:#52657f; font-size:10px; font-weight:700; transition:.18s ease; }
+.back-control { padding:0 12px 0 8px; }
+.back-control svg, .topbar-actions svg { width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round; }
+.back-control:hover, .topbar-actions button:hover:not(:disabled) { border-color:#b7c8dd; color:#315f93; background:#f9fbfe; }
+.topbar-actions { display:flex; gap:8px; }
+.topbar-actions button { min-width:112px; padding:0 12px; cursor:pointer; }
+.topbar-actions .open-control { border-color:var(--navy); background:var(--navy); color:#fff; }
+.topbar-actions button:disabled { opacity:.55; cursor:wait; }
+.download-error { border:1px solid #edcdd2; border-radius:8px; background:#fff7f8; padding:10px 12px; color:#9d4d59; font-size:10px; }
+.report-identity { display:grid; grid-template-columns:minmax(0,1fr) 190px; align-items:end; gap:28px; min-height:220px; border-radius:16px; background:linear-gradient(135deg,#fff 0%,#fff 68%,#edf3fa 100%); border:1px solid #dfe6ef; padding:34px 38px; overflow:hidden; }
+.report-identity {
   position: relative;
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-}
-.risk-score-ring svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-.risk-number {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -60%);
-  font-size: 1.25rem;
-  font-weight: 800;
-  line-height: 1;
-}
-.risk-label {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-:root {
-  --ring-bg: #f3f4f6;
-}
-
-/* Two column layout */
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 1.25rem;
-  align-items: start;
-}
-@media (max-width: 768px) {
-  .two-col {
-    grid-template-columns: 1fr;
-  }
-}
-.right-col {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-.right-col .card {
-  margin-bottom: 0;
-}
-
-/* Findings */
-.findings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-.finding-item {
-  padding: 0.875rem;
-  border-radius: 0.625rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-}
-.finding-critical_high,
-.finding-critical_low {
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-.finding-moderate_high,
-.finding-moderate_low {
-  background: #fff7ed;
-  border-color: #fed7aa;
-}
-.finding-mild_high,
-.finding-mild_low {
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-.finding-borderline {
-  background: #f0f9ff;
-  border-color: #bae6fd;
-}
-.finding-normal {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
-.finding-header {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-  flex-wrap: wrap;
-}
-.finding-label {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: #111827;
-}
-.finding-badge {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-}
-.badge-normal {
-  background: #dcfce7;
-  color: #166534;
-}
-.badge-borderline {
-  background: #dbeafe;
-  color: #1e40af;
-}
-.badge-mild_high,
-.badge-mild_low {
-  background: #fef9c3;
-  color: #854d0e;
-}
-.badge-moderate_high,
-.badge-moderate_low {
-  background: #ffedd5;
-  color: #9a3412;
-}
-.badge-critical_high,
-.badge-critical_low {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.finding-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  margin: 0.25rem 0 0;
-}
-.finding-why {
-  font-size: 0.8125rem;
-  color: #6b7280;
-  margin: 0.375rem 0 0;
-  line-height: 1.55;
-}
-.severity-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.625rem;
-}
-.severity-bar {
-  flex: 1;
-  height: 5px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.severity-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.4s ease;
-}
-.severity-num {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #6b7280;
-  min-width: 24px;
-  text-align: right;
-}
-
-/* Markers table */
-.markers-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-.markers-table th {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9ca3af;
-  padding: 0 0 0.5rem;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-.markers-table td {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
-}
-.markers-table tr:last-child td {
-  border-bottom: none;
-}
-.unit-cell {
-  color: #9ca3af;
-  font-size: 0.8125rem;
-}
-.range-text {
-  display: block;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  line-height: 1.4;
-  margin-top: 0.125rem;
-}
-
-/* Two equal columns */
-.even-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-  align-items: start;
-  margin-bottom: 1.25rem;
-}
-.even-col .card {
-  margin-bottom: 0;
-}
-@media (max-width: 768px) {
-  .even-col {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Alerts */
-.alert-critical {
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-.alert-critical .card-title {
-  color: #991b1b;
-}
-.alert-warning {
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-.alert-warning .card-title {
-  color: #92400e;
-}
-.positive-card {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-.card-note {
-  font-size: 0.8125rem;
-  color: #6b7280;
-  margin: -0.5rem 0 0.875rem;
-}
-.chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-/* Finding details */
-.finding-sub {
-  margin-top: 0.625rem;
-}
-.finding-sub-title {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  margin: 0 0 0.25rem;
-}
-.finding-sub .rec-list li {
-  font-size: 0.8125rem;
-}
-
-/* Risk categories */
-.risk-cat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-.risk-cat-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-.risk-cat-bar {
-  margin-top: 0.25rem;
-}
-
-/* Outlook (low / moderate / high) */
-.outlook-low {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-.outlook-moderate {
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-.outlook-high {
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-.outlook-badge-low {
-  background: #dcfce7;
-  color: #166534;
-}
-.outlook-badge-moderate {
-  background: #fef9c3;
-  color: #854d0e;
-}
-.outlook-badge-high {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-/* 5-year timeline */
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-.timeline-item {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-.timeline-year {
-  width: 36px;
-  height: 36px;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-.timeline-question {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-}
-
-/* Extracted text */
-.extracted-summary {
-  cursor: pointer;
-  margin: 0;
-}
-.extracted-card[open] .extracted-summary {
-  margin-bottom: 1rem;
-}
-.extracted-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: #4b5563;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.625rem;
-  padding: 1rem;
-  max-height: 400px;
-  overflow: auto;
-  margin: 0;
-}
-
-/* Recommendations */
-.recs-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-.rec-section {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-.rec-full {
-  width: 100%;
-}
-.rec-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-.rec-diet {
-  background: #dcfce7;
-}
-.rec-exercise {
-  background: #dbeafe;
-}
-.rec-sleep {
-  background: #fef9c3;
-}
-.rec-supp {
-  background: #f3e8ff;
-}
-.rec-followup {
-  background: #f0f9ff;
-}
-.rec-heading {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #374151;
-  margin: 0 0 0.375rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.rec-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-.rec-list li {
-  font-size: 0.875rem;
-  color: #4b5563;
-  line-height: 1.55;
-  padding-left: 0.875rem;
-  position: relative;
-}
-.rec-list li::before {
-  content: "·";
-  position: absolute;
-  left: 0;
-  color: #9ca3af;
-  font-weight: 700;
-}
-
-/* Medicine Suggestions */
-.medicine-card {
-  border-color: #dbeafe;
-  background: #f8faff;
-}
-.disclaimer-inline {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 0.625rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.8125rem;
-  color: #92400e;
-  line-height: 1.5;
-}
-.disclaimer-inline svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: #d97706;
-}
-.med-suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-.med-suggestion-item {
-  padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-}
-.med-suggestion-item.med-type-medicine {
-  border-left: 3px solid #f59e0b;
-}
-.med-suggestion-item.med-type-supplement {
-  border-left: 3px solid #10b981;
-}
-.med-suggestion-item.med-type-vitamin {
-  border-left: 3px solid #3b82f6;
-}
-.med-suggestion-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.375rem;
-  flex-wrap: wrap;
-}
-.med-suggestion-type {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-}
-.rx-badge-sm {
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: #dc2626;
-  background: #fee2e2;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-}
-.med-suggestion-name {
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 0.375rem;
-}
-.med-suggestion-generic {
-  font-size: 0.8125rem;
-  color: #6b7280;
-  margin: -0.25rem 0 0.375rem;
-}
-.med-suggestion-reason {
-  font-size: 0.8125rem;
-  color: #4b5563;
-  line-height: 1.55;
-  margin: 0 0 0.625rem;
-}
-.med-suggestion-evidence {
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-style: italic;
-  margin: -0.375rem 0 0.625rem;
-}
-.med-suggestion-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.med-suggestion-price {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.625rem;
-}
-.med-suggestion-price .price {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #01696f;
-}
-.med-suggestion-price .mrp {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  text-decoration: line-through;
-}
-.med-suggestion-price .pack {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-.detail-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #374151;
-  background: #f3f4f6;
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-}
-.detail-chip svg {
-  color: #9ca3af;
-}
-.pharmacy-cta {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-.btn-sm {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-}
-.buy-btn {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 0.75rem;
-  text-decoration: none;
-}
-.doctor-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-.doctor-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  background: #f9fafb;
-}
-.doc-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #01696f, #0c4e54);
+  isolation: isolate;
+  border: 1px solid #18375f;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(84, 166, 255, .24), transparent 25%),
+    linear-gradient(145deg, #0b1c39 0%, #102b53 58%, #153766 100%);
+  box-shadow: 0 14px 34px rgba(11, 28, 57, .14);
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 1.125rem;
-  flex-shrink: 0;
 }
-.doc-info { flex: 1; }
-.doc-name {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 0.125rem;
+.report-identity::after {
+  position: absolute;
+  z-index: -1;
+  right: -70px;
+  bottom: -150px;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgba(169, 210, 255, .10);
+  border-radius: 50%;
+  box-shadow: 0 0 0 28px rgba(255,255,255,.018), 0 0 0 58px rgba(255,255,255,.012);
+  content: "";
+  pointer-events: none;
 }
-.doc-spec {
-  font-size: 0.8125rem;
-  color: #6b7280;
-  margin: 0 0 0.125rem;
+.identity-kicker { display:flex; align-items:center; gap:8px; margin-bottom:12px; color:#a9d2ff; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.identity-kicker i { width:4px;height:4px;border-radius:50%;background:#72b3ff; box-shadow:0 0 0 3px rgba(114,179,255,.10); }
+.identity-copy h1 { max-width:760px; margin:0; color:#fff; font-size:clamp(34px,4.2vw,54px); line-height:1.02; letter-spacing:-.055em; overflow-wrap:anywhere; }
+.identity-meta { display:flex; flex-wrap:wrap; gap:22px; margin-top:22px; }
+.identity-meta span { display:grid; gap:3px; color:#d8e9fb; font-size:10px; font-weight:700; }
+.identity-meta small { color:#91b8df; font-size:8px; text-transform:uppercase; letter-spacing:.08em; }
+.identity-score { align-self:stretch; display:flex; flex-direction:column; justify-content:center; border-left:1px solid rgba(169,210,255,.18); padding-left:28px; }
+.identity-score > span { color:#a9d2ff; font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+.identity-score strong { margin:4px 0 10px; color:#fff; font-size:52px; line-height:.95; letter-spacing:-.06em; }
+.score-dots { display:grid; grid-template-columns:repeat(5,16px); gap:5px; }
+.score-dots i { width:16px;height:5px;border-radius:99px;background:rgba(255,255,255,.16); }
+.score-dots i.on { background:#72b3ff; }
+.summary-band { display:grid; grid-template-columns:48px minmax(0,1fr); gap:16px; margin-top:12px; border:1px solid var(--line); border-radius:14px; background:#fff; padding:24px 28px; }
+.band-number, .panel header > span { width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(145deg,#0b1c39 0%,#102b53 58%,#153766 100%);color:#fff;font-size:9px;font-weight:800; }
+.summary-band p, .panel header p { margin:0 0 5px;color:#8797aa;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em; }
+.summary-band h2, .panel header h2 { margin:0;color:#263d5b;font-size:21px;letter-spacing:-.02em; }
+.summary-band blockquote { max-width:950px; margin:14px 0 0; border-left:2px solid #91aecb; padding-left:16px;color:#526984;font-size:16px;line-height:1.75; }
+.alert-band { display:grid; grid-template-columns:92px minmax(0,1fr); align-items:start; margin-top:10px; border:1px solid var(--line); border-radius:11px; padding:13px 16px; }
+.alert-band > span { font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em; }
+.alert-band ul { margin:0;padding-left:14px;font-size:10px;line-height:1.7; }
+.critical-band { border-color:#e8ccd1;background:#fff7f8;color:#9b4f5b; }
+.warning-band { border-color:#eadcaa;background:#fffaf0;color:#947132; }
+.bento-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:12px; }
+.panel { min-width:0;margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:22px 24px;box-shadow:0 7px 20px rgba(43,73,112,.035); }
+.bento-row .panel { margin-top:0; }
+.panel header { display:grid;grid-template-columns:36px minmax(0,1fr);align-items:center;gap:10px;margin-bottom:18px; }
+.risk-list { display:grid;gap:15px; }
+.risk-list article div:first-child { display:flex;justify-content:space-between;margin-bottom:8px;color:#4b607a;font-size:12px;font-weight:700; }
+.risk-line { height:7px;border-radius:99px;background:#edf1f5;overflow:hidden; }
+.risk-line i { display:block;height:100%;border-radius:99px; }
+.test-panel ol { display:grid;gap:7px;margin:0;padding:0;list-style:none; }
+.test-panel li { display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;min-height:44px;border-bottom:1px solid #edf1f5; }
+.test-panel li span { color:#86a2c2;font-size:10px;font-weight:800; }
+.test-panel li p { margin:0;color:#526984;font-size:12px;line-height:1.55; }
+.test-panel small { display:block;margin-top:12px;color:#8e9db0;font-size:10px;line-height:1.6; }
+.recommendation-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+.recommendation-grid article { display:grid;grid-template-columns:32px minmax(0,1fr);gap:9px;min-height:110px;border:1px solid #e5ebf2;border-radius:10px;background:#fbfcfe;padding:12px; }
+.recommendation-letter { width:32px;height:32px;display:grid;place-items:center;border-radius:7px;background:#edf3fa;color:#3f74ad;font-size:9px;font-weight:800; }
+.recommendation-grid h3 { margin:0;color:#365171;font-size:14px;font-weight:800; }
+.findings-list h3 { margin:0;color:#365171;font-size:14px;font-weight:800; }
+.card-grid h3,.timeline h3 { margin:0;color:#365171;font-size:13px;font-weight:800; }
+.medicine-grid h3 { margin:0;color:#365171;font-size:14px;font-weight:800; }
+.recommendation-grid ul { margin:8px 0 0;padding-left:14px;color:#637793;font-size:13px;line-height:1.7; }
+.findings-panel { padding:16px 18px;font-family:Poppins,system-ui,sans-serif; }
+.findings-panel header { margin-bottom:12px; }
+.findings-list { display:grid;gap:6px; }
+.findings-list article { border:1px solid #e6ecf3;border-radius:10px;background:#fcfdff;padding:10px; }
+.finding-head { display:flex;justify-content:space-between;gap:10px; }
+.finding-head strong { display:block;margin-top:4px;color:#244767;font-size:15px; }
+.finding-status { height:24px;display:inline-flex;align-items:center;border-radius:99px;background:#edf5f1;padding:0 9px;color:#4f806b;font-size:9px;font-weight:800;text-transform:uppercase; }
+.finding-status.mild-high,.finding-status.borderline,.finding-status.mild-low { background:#fff7df;color:#967431; }
+.finding-status.moderate-high,.finding-status.moderate-low,.finding-status.critical { background:#fff0f1;color:#9d5963; }
+.finding-body,.finding-detail p { margin:9px 0 0;color:#687c94;font-size:13px;line-height:1.7; }
+.findings-panel .finding-body { margin-top:6px;line-height:1.55; }
+.finding-detail { margin-top:6px;border-top:1px solid #edf1f5;padding-top:6px; }
+.finding-detail span { color:#7488a0;font-size:10px;font-weight:800;text-transform:uppercase; }
+.marker-scroll { overflow-x:auto; }
+.marker-scroll table { width:100%;border-collapse:collapse;font-family:Poppins,system-ui,sans-serif;font-size:12px;font-variant-numeric:tabular-nums; }
+.marker-scroll th { border-bottom:1px solid #d6e1ee;background:#f7f9fc;padding:9px 10px;color:#617792;font-size:10px;font-weight:800;letter-spacing:.06em;text-align:left;text-transform:uppercase; }
+.marker-scroll td { border-bottom:1px solid #e8edf4;padding:9px 10px;color:#4e6480;font-size:12px; }
+.marker-scroll tbody tr:nth-child(even) { background:#fbfcfe; }
+.marker-scroll tbody tr:hover { background:#f4f8fd; }
+.marker-scroll td strong { color:#1e3c5f;font-size:13px;font-weight:700; }
+.marker-scroll td span { color:#7186a0;font-size:11px; }
+.editorial-list { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
+.editorial-list li { position:relative;border-bottom:1px solid #edf1f5;padding:8px 0 8px 15px;color:#526984;font-family:Poppins,system-ui,sans-serif;font-size:12px;line-height:1.65; }
+.editorial-list li:before { position:absolute;left:0;top:13px;width:5px;height:5px;border-radius:50%;background:#89a8c6;content:""; }
+.positive-panel { border-color:#dceadf;background:#fcfefd; }
+.card-grid,.medicine-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
+.card-grid article,.medicine-grid article,.timeline article { border:1px solid #e5ebf2;border-radius:10px;background:#fbfcfe;padding:12px; }
+.card-grid article div,.medicine-grid article div { display:flex;justify-content:space-between;gap:8px; }
+.card-grid article span,.medicine-grid article div span { border-radius:99px;background:#edf3fa;padding:4px 7px;color:#5d7e9f;font-size:10px;font-weight:800;text-transform:uppercase; }
+.card-grid p,.timeline p { margin:8px 0 0;color:#5c7189;font-family:Poppins,system-ui,sans-serif;font-size:12px;line-height:1.65; }
+.medicine-grid p,.medicine-grid small { margin:8px 0 0;color:#687d94;font-family:Poppins,system-ui,sans-serif;font-size:12px;line-height:1.65; }
+.timeline { display:grid;gap:8px; }
+.timeline article>span { color:#758ba5;font-size:10px;font-weight:800;text-transform:uppercase; }
+.timeline h3 { margin-top:5px; }
+.medical-disclaimer { display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;margin-bottom:10px;border:1px solid #dde6f0;border-radius:9px;background:#f7faff;padding:11px 12px; }
+.medical-disclaimer strong { color:#3f74ad;font-size:10px;text-transform:uppercase; }
+.medical-disclaimer p { margin:0;color:#5f738a;font-size:12px;line-height:1.55; }
+.medicine-grid article div .rx { background:#fff0f1!important;color:#9d5963!important; }
+.source-panel { margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px 18px; }
+.source-panel summary { display:flex;align-items:center;justify-content:space-between;list-style:none;cursor:pointer; }
+.source-panel summary::-webkit-details-marker { display:none; }
+.source-panel summary span { display:grid; }
+.source-panel summary strong { color:#365171;font-size:14px; }
+.source-panel summary small { margin-top:3px;color:#91a0b2;font-size:11px; }
+.source-panel summary svg { width:17px;height:17px;fill:none;stroke:#71869e;stroke-width:1.8;transition:.18s; }
+.source-panel[open] summary svg { transform:rotate(180deg); }
+.source-panel pre { max-height:400px;overflow:auto;margin:12px 0 0;border:1px solid #e5ebf2;border-radius:8px;background:#f8fafc;padding:14px;color:#5d7189;font-family:Poppins,system-ui,sans-serif;font-size:12px;line-height:1.7;white-space:pre-wrap; }
+.report-footer { display:flex;justify-content:space-between;gap:20px;margin-top:18px;border-top:1px solid var(--line);padding-top:16px;color:#91a0b2;font-size:8px; }
+.report-footer span { color:#3f74ad;font-weight:800;text-transform:uppercase;letter-spacing:.12em; }
+.report-footer p { margin:0;text-align:right; }
+.report-loader { max-width:1180px;margin:0 auto;padding:24px clamp(18px,3vw,44px); }
+.loader-hero,.loader-grid span { border:1px solid var(--line);border-radius:14px;background:linear-gradient(90deg,#fff 25%,#edf2f7 50%,#fff 75%);background-size:200% 100%;animation:load 1.4s infinite; }
+.loader-hero { height:220px; }
+.loader-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px; }
+.loader-grid span { height:160px; }
+.empty-report { max-width:560px;margin:70px auto;border:1px solid var(--line);border-radius:14px;background:#fff;padding:44px;text-align:center; }
+.empty-report div { color:#3f74ad;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.12em; }
+.empty-report h1 { margin:8px 0;color:#263d5b;font-size:24px; }
+.empty-report p { color:#7e8da1;font-size:10px; }
+.empty-report a { display:inline-flex;height:40px;align-items:center;border-radius:8px;background:var(--navy);padding:0 14px;color:#fff;font-size:10px;font-weight:700; }
+@keyframes load { to { background-position:-200% 0; } }
+@media(max-width:980px){ .recommendation-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media(max-width:720px){
+  .clinical-report{margin:-20px -16px -24px}.report-canvas{padding:18px 14px}.report-topbar{height:58px}.back-control{width:38px;padding:0;font-size:0}.topbar-actions button{min-width:38px;width:38px;padding:0;font-size:0}
+  .report-identity{grid-template-columns:1fr;min-height:0;padding:26px 22px}.identity-score{border-left:0;border-top:1px solid #dfe6ef;padding:18px 0 0}.identity-copy h1{font-size:34px}.identity-meta{gap:12px}.bento-row,.card-grid,.medicine-grid{grid-template-columns:1fr}.recommendation-grid{grid-template-columns:1fr}.summary-band{grid-template-columns:40px minmax(0,1fr);padding:20px}.summary-band blockquote{font-size:15px}.alert-band{grid-template-columns:72px minmax(0,1fr)}
+  .medical-disclaimer{grid-template-columns:1fr}.report-footer{align-items:flex-start;flex-direction:column}.report-footer p{text-align:left}.loader-grid{grid-template-columns:1fr}
 }
-.doc-exp {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin: 0;
-}
-
-/* Preview */
-.preview-card {
-}
-.preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.preview-frame {
-  border-radius: 0.625rem;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
-  min-height: 400px;
-}
-.pdf-frame {
-  width: 100%;
-  height: 600px;
-  border: none;
-  display: block;
-}
-.img-preview {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-.preview-unavailable {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
-  gap: 0.75rem;
-  color: #9ca3af;
-  padding: 2rem;
-}
-.preview-unavailable p {
-  font-size: 0.9375rem;
-  color: #6b7280;
-  margin: 0;
+@media(max-width:480px){
+  .identity-copy h1{font-size:29px}.identity-meta{flex-direction:column}.summary-band{grid-template-columns:1fr}.summary-band h2{font-size:19px}.summary-band blockquote{font-size:14px}.score-dots{grid-template-columns:repeat(5,24px)}.alert-band{grid-template-columns:1fr}.panel{padding:18px}.marker-scroll th:nth-child(3),.marker-scroll td:nth-child(3){display:none}
 }
 </style>
