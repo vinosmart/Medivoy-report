@@ -33,6 +33,8 @@ export class ReportsService {
       fileUrl,
       forMember: forMember || '',
       status: 'processing',
+      progress: 0,
+      processingStage: 'Queued',
     })
 
     const saved = await this.repo.save(report)
@@ -46,6 +48,8 @@ export class ReportsService {
 
   private async processReport(reportId: string, filePath: string, type: string) {
     try {
+      await this.updateProcessingProgress(reportId, 10, 'Reading report')
+
       let extractedText = ''
 
       if (filePath && fs.existsSync(filePath)) {
@@ -57,6 +61,12 @@ export class ReportsService {
         if (fallback) extractedText = fallback
       }
 
+      await this.updateProcessingProgress(
+        reportId,
+        35,
+        'Preparing report text',
+      )
+
       const normalizedType = this.aiService.detectReportType(String(type || ''), extractedText)
 
       console.log('[processReport] reportId:', reportId)
@@ -64,35 +74,43 @@ export class ReportsService {
       console.log('[processReport] type:', normalizedType)
       console.log('[processReport] extractedText length:', extractedText?.length || 0)
 
-      let markers =
+      const markers =
         normalizedType === 'dna'
           ? this.extractDnaFindingsAsMarkers(extractedText)
           : normalizedType === 'blood'
             ? this.extractBloodMarkersFromText(extractedText)
             : []
 
-      // Lab layouts vary too much for the regex extractor; prefer the AI's
-      // structured extraction when it finds more results.
-      if (normalizedType === 'blood') {
-        const aiMarkers = await this.aiService.extractLabMarkers(extractedText)
-        if (aiMarkers.length > markers.length) markers = aiMarkers
-      }
+      await this.updateProcessingProgress(reportId, 50, 'Finding report values')
 
       console.log('[processReport] markers length:', markers.length)
 
+      await this.updateProcessingProgress(
+        reportId,
+        60,
+        'Generating health insights',
+      )
       const result = await this.aiService.analyzeReport(extractedText, markers, normalizedType)
 
-      const fallbackMarkers =
-        markers.length > 0
-          ? markers
-          : result.findings?.map((f) => ({
-              name: f.label,
-              value: f.value,
-              unit: '',
-            })) || []
+      const markerNames = new Set(
+        markers.map((marker) => marker.name.trim().toLowerCase()),
+      )
+      const analyzedMarkers = (result.findings || []).flatMap((finding) => {
+        const name = finding.label.trim()
+        const normalizedName = name.toLowerCase()
+        if (!name || markerNames.has(normalizedName)) return []
+
+        markerNames.add(normalizedName)
+        return [{ name, value: finding.value, unit: '' }]
+      })
+      const fallbackMarkers = this.uniqueMarkers([...markers, ...analyzedMarkers])
+
+      await this.updateProcessingProgress(reportId, 92, 'Finalizing report')
 
       const updatePayload: Partial<Report> & Record<string, any> = {
         status: 'done',
+        progress: 100,
+        processingStage: 'Analysis complete',
         riskScore: result.overallHealthScore ?? 70,
         summary: result.summary || '',
         recommendations: result.recommendations || {
@@ -169,10 +187,21 @@ export class ReportsService {
       await this.repo
         .update(reportId, {
           status: 'error',
+          processingStage: 'Analysis failed',
           summary: 'Failed to process report.',
         })
-        .catch(() => {})
+        .catch((updateError) =>
+          console.error('Failed to save report processing error:', updateError),
+        )
     }
+  }
+
+  private updateProcessingProgress(
+    reportId: string,
+    progress: number,
+    processingStage: string,
+  ) {
+    return this.repo.update(reportId, { progress, processingStage })
   }
 
   private hasColumn(column: string) {

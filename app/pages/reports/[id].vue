@@ -1,52 +1,27 @@
 <template>
   <div class="report-page">
-    <!-- Header -->
-    <div class="report-header">
-      <NuxtLink to="/reports" class="back-btn">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-        >
-          <path d="M19 12H5M12 5l-7 7 7 7" />
-        </svg>
-        Back to Reports
-      </NuxtLink>
-      <div v-if="report" class="header-actions">
-        <button class="btn-outline" @click="downloadFile">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
-            />
-          </svg>
+    <PageHeading
+      :icon="IconFileText"
+      title="Report details"
+      description="Review the analysis, findings, and original file for this health record."
+    >
+      <template #actions>
+        <NuxtLink to="/reports" class="btn-outline">
+          <IconArrowLeft :size="17" aria-hidden="true" />
+          All reports
+        </NuxtLink>
+        <template v-if="report">
+          <button class="btn-outline" @click="downloadFile">
+            <IconDownload :size="17" aria-hidden="true" />
           Download
-        </button>
-        <button class="btn-outline" @click="viewFile">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+          </button>
+          <button class="btn-outline" @click="viewFile">
+            <IconEye :size="17" aria-hidden="true" />
           View File
-        </button>
-      </div>
-    </div>
+          </button>
+        </template>
+      </template>
+    </PageHeading>
 
     <!-- Loading -->
     <div v-if="loading" class="loading-card">
@@ -58,18 +33,7 @@
 
     <!-- Error -->
     <div v-else-if="!report" class="empty-state">
-      <svg
-        width="48"
-        height="48"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
+      <IconAlertCircle :size="48" :stroke-width="1.5" aria-hidden="true" />
       <h3>Report not found</h3>
       <p>This report may have been deleted or you may not have access to it.</p>
       <NuxtLink to="/reports" class="btn-primary">Go to Reports</NuxtLink>
@@ -103,35 +67,36 @@
               </template>
             </p>
           </div>
-          <div v-if="healthScore != null" class="risk-score-ring">
-            <svg width="80" height="80" viewBox="0 0 80 80">
-              <circle
-                cx="40"
-                cy="40"
-                r="34"
-                fill="none"
-                stroke="var(--ring-bg)"
-                stroke-width="7"
-              />
-              <circle
-                cx="40"
-                cy="40"
-                r="34"
-                fill="none"
-                :stroke="healthColor(healthScore)"
-                stroke-width="7"
-                stroke-linecap="round"
-                :stroke-dasharray="213.6"
-                :stroke-dashoffset="213.6 - (213.6 * healthScore) / 100"
-                transform="rotate(-90 40 40)"
-              />
-            </svg>
-            <span
-              class="risk-number"
-              :style="{ color: healthColor(healthScore) }"
-              >{{ healthScore }}</span
+          <div v-if="healthScore != null" class="health-score-card">
+            <p class="health-score-heading">
+              <IconActivityHeartbeat :size="17" aria-hidden="true" />
+              AI wellness score
+            </p>
+            <p class="health-score-value">
+              <span :style="{ color: healthColor(healthScore) }">
+                {{ healthScore }}
+              </span>
+              <span class="health-score-scale">/ 100</span>
+            </p>
+            <div
+              class="health-score-track"
+              role="meter"
+              aria-label="AI wellness score"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="healthScore"
             >
-            <span class="risk-label">Health</span>
+              <div
+                class="health-score-fill"
+                :style="{
+                  width: `${healthScore}%`,
+                  backgroundColor: healthColor(healthScore),
+                }"
+              ></div>
+            </div>
+            <p class="health-score-caption">
+              AI-generated indicator, not a clinical measurement.
+            </p>
           </div>
         </div>
         <p class="summary-text">{{ report.summary }}</p>
@@ -228,29 +193,31 @@
           <!-- Markers -->
           <div v-if="report.markers?.length" class="card">
             <h2 class="card-title">Markers</h2>
-            <table class="markers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Value</th>
-                  <th>Unit</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="m in report.markers" :key="m.name">
-                  <td>
-                    {{ m.name }}
-                    <span v-if="m.referenceRange" class="range-text"
-                      >Range: {{ m.referenceRange }}</span
-                    >
-                  </td>
-                  <td>
-                    <strong>{{ m.value }}</strong>
-                  </td>
-                  <td class="unit-cell">{{ m.unit || "—" }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="markers-table-wrap">
+              <table class="markers-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="m in report.markers" :key="m.name">
+                    <td>
+                      {{ m.name }}
+                      <span v-if="m.referenceRange" class="range-text"
+                        >Range: {{ m.referenceRange }}</span
+                      >
+                    </td>
+                    <td>
+                      <strong>{{ m.value }}</strong>
+                    </td>
+                    <td class="unit-cell">{{ m.unit || "-" }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Recommendations -->
@@ -261,7 +228,9 @@
                 v-if="report.recommendations?.diet?.length"
                 class="rec-section"
               >
-                <div class="rec-icon rec-diet">🥗</div>
+                <div class="rec-icon rec-diet">
+                  <IconSalad :size="18" aria-hidden="true" />
+                </div>
                 <div>
                   <p class="rec-heading">Diet</p>
                   <ul class="rec-list">
@@ -275,7 +244,9 @@
                 v-if="report.recommendations?.exercise?.length"
                 class="rec-section"
               >
-                <div class="rec-icon rec-exercise">🏃</div>
+                <div class="rec-icon rec-exercise">
+                  <IconActivityHeartbeat :size="18" aria-hidden="true" />
+                </div>
                 <div>
                   <p class="rec-heading">Exercise</p>
                   <ul class="rec-list">
@@ -289,7 +260,9 @@
                 v-if="report.recommendations?.sleep?.length"
                 class="rec-section"
               >
-                <div class="rec-icon rec-sleep">😴</div>
+                <div class="rec-icon rec-sleep">
+                  <IconMoonStars :size="18" aria-hidden="true" />
+                </div>
                 <div>
                   <p class="rec-heading">Sleep</p>
                   <ul class="rec-list">
@@ -303,7 +276,9 @@
                 v-if="report.recommendations?.supplements?.length"
                 class="rec-section"
               >
-                <div class="rec-icon rec-supp">💊</div>
+                <div class="rec-icon rec-supp">
+                  <IconPill :size="18" aria-hidden="true" />
+                </div>
                 <div>
                   <p class="rec-heading">Supplements</p>
                   <ul class="rec-list">
@@ -320,7 +295,9 @@
                 v-if="report.recommendations?.followUp?.length"
                 class="rec-section rec-full"
               >
-                <div class="rec-icon rec-followup">📋</div>
+                <div class="rec-icon rec-followup">
+                  <IconCalendarCheck :size="18" aria-hidden="true" />
+                </div>
                 <div>
                   <p class="rec-heading">Follow-Up</p>
                   <ul class="rec-list">
@@ -454,18 +431,23 @@
       <!-- Medicine & Supplement Suggestions -->
       <div v-if="displayedMedicineSuggestions.length" class="card medicine-card">
         <div class="disclaimer-inline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span><strong>AI Suggestion — Consult a doctor before taking any medicine.</strong> These are AI-generated recommendations based on your report, cross-checked against live pharmacy stock where available. They are NOT a medical prescription. Always consult a qualified healthcare professional before starting any medication or supplement.</span>
+          <IconShieldCheck :size="18" :stroke-width="1.8" aria-hidden="true" />
+          <span><strong>AI suggestions are informational. Consult a doctor before taking any medicine.</strong> These recommendations are based on your report and may be cross-checked against live pharmacy stock. They are not a medical prescription. Always consult a qualified healthcare professional before starting any medication or supplement.</span>
         </div>
 
         <h2 class="card-title">Suggested Medicines & Supplements</h2>
         <div class="med-suggestions-list">
           <div v-for="(med, idx) in displayedMedicineSuggestions" :key="idx" class="med-suggestion-item" :class="'med-type-' + med.type">
             <div class="med-suggestion-header">
-              <span class="med-suggestion-type">{{ med.type === 'medicine' ? '💊' : med.type === 'vitamin' ? '💊' : '🌿' }} {{ capitalize(med.type) }}</span>
+              <span class="med-suggestion-type">
+                <IconPill
+                  v-if="med.type === 'medicine' || med.type === 'vitamin'"
+                  :size="15"
+                  aria-hidden="true"
+                />
+                <IconLeaf v-else :size="15" aria-hidden="true" />
+                {{ capitalize(med.type) }}
+              </span>
               <span v-if="med.live?.isPrescriptionRequired ?? med.isPrescriptionRequired" class="rx-badge-sm">Requires Prescription</span>
             </div>
             <h3 class="med-suggestion-name">{{ med.live?.brandName || med.name }}</h3>
@@ -474,11 +456,11 @@
             <p v-if="med.evidence" class="med-suggestion-evidence">Evidence: {{ med.evidence }}</p>
             <div v-if="med.dosage || med.duration" class="med-suggestion-details">
               <span v-if="med.dosage" class="detail-chip">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
+                <IconMinus :size="13" aria-hidden="true" />
                 {{ med.dosage }}
               </span>
               <span v-if="med.duration" class="detail-chip">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <IconClock :size="13" aria-hidden="true" />
                 {{ med.duration }}
               </span>
             </div>
@@ -530,7 +512,8 @@
         <div class="preview-header">
           <h2 class="card-title" style="margin: 0">Document Preview</h2>
           <a :href="resolvedFileUrl" target="_blank" class="btn-outline btn-sm"
-            >Open in tab ↗</a
+            rel="noopener noreferrer"
+            >Open in tab <IconExternalLink :size="14" aria-hidden="true" /></a
           >
         </div>
         <div class="preview-frame">
@@ -547,17 +530,7 @@
             alt="Report document"
           />
           <div v-else class="preview-unavailable">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
+            <IconFileText :size="40" :stroke-width="1.5" aria-hidden="true" />
             <p>Preview not available for this file type.</p>
             <a :href="resolvedFileUrl" target="_blank" class="btn-primary"
               >Download File</a
@@ -576,6 +549,22 @@
 </template>
 
 <script setup lang="ts">
+import IconArrowLeft from "@tabler/icons-vue/icons/IconArrowLeft";
+import IconAlertCircle from "@tabler/icons-vue/icons/IconAlertCircle";
+import IconActivityHeartbeat from "@tabler/icons-vue/icons/IconActivityHeartbeat";
+import IconCalendarCheck from "@tabler/icons-vue/icons/IconCalendarCheck";
+import IconClock from "@tabler/icons-vue/icons/IconClock";
+import IconDownload from "@tabler/icons-vue/icons/IconDownload";
+import IconExternalLink from "@tabler/icons-vue/icons/IconExternalLink";
+import IconEye from "@tabler/icons-vue/icons/IconEye";
+import IconFileText from "@tabler/icons-vue/icons/IconFileText";
+import IconLeaf from "@tabler/icons-vue/icons/IconLeaf";
+import IconMinus from "@tabler/icons-vue/icons/IconMinus";
+import IconMoonStars from "@tabler/icons-vue/icons/IconMoonStars";
+import IconPill from "@tabler/icons-vue/icons/IconPill";
+import IconSalad from "@tabler/icons-vue/icons/IconSalad";
+import IconShieldCheck from "@tabler/icons-vue/icons/IconShieldCheck";
+
 const route = useRoute();
 const api = useMedivoyApi();
 const report = ref<any>(null);
@@ -748,59 +737,53 @@ function viewFile() {
 
 <style scoped>
 .report-page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  display: flex;
+  max-width: none;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0 0 1rem;
 }
 
-.report-header {
+.report-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
   gap: 1rem;
-  flex-wrap: wrap;
-}
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  text-decoration: none;
-  padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.625rem;
-  background: #fff;
-  transition: all 0.15s;
-}
-.back-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-}
-.header-actions {
-  display: flex;
-  gap: 0.625rem;
 }
 
 .btn-outline {
   display: inline-flex;
+  min-height: 2.75rem;
   align-items: center;
-  gap: 0.375rem;
+  justify-content: center;
+  gap: 0.5rem;
   font-size: 0.8125rem;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
+  color: #38536a;
   padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.625rem;
+  border: 1px solid #d8e2eb;
+  border-radius: 0.875rem;
   background: #fff;
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
   text-decoration: none;
 }
 .btn-outline:hover {
-  background: #f9fafb;
+  border-color: #b7dbe3;
+  background: #f0f9fb;
+  color: #0e6178;
+}
+.btn-outline:active,
+.btn-primary:active {
+  transform: scale(0.985);
+}
+.btn-outline:focus-visible {
+  outline: 2px solid var(--medivoy-accent);
+  outline-offset: 3px;
 }
 .btn-outline.btn-sm {
   padding: 0.375rem 0.75rem;
@@ -809,43 +792,62 @@ function viewFile() {
 
 .btn-primary {
   display: inline-flex;
+  min-height: 48px;
+  justify-content: center;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
-  padding: 0.625rem 1.125rem;
-  border: none;
-  border-radius: 0.625rem;
-  background: #01696f;
+  line-height: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--medivoy-accent);
+  border-radius: 0.875rem;
+  background: var(--medivoy-accent);
   cursor: pointer;
-  transition: background 0.15s;
+  box-shadow: 0 8px 18px -12px rgb(14 116 144 / 0.65);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
   text-decoration: none;
 }
 .btn-primary:hover {
-  background: #0c4e54;
+  border-color: var(--medivoy-accent-strong);
+  background: var(--medivoy-accent-strong);
+  box-shadow: 0 10px 20px -12px rgb(14 116 144 / 0.55);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--medivoy-accent);
+  outline-offset: 3px;
+}
+.btn-primary.btn-sm {
+  min-height: 40px;
 }
 
 /* Cards */
 .card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  margin-bottom: 0;
+  box-shadow: 0 8px 22px rgb(15 42 67 / 0.035);
 }
 .card-title {
   font-size: 1rem;
   font-weight: 700;
   color: #111827;
-  margin: 0 0 1rem;
+  margin: 0 0 0.875rem;
+  line-height: 1.4;
 }
 
 /* Loading */
 .loading-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
   padding: 2rem;
 }
 @keyframes shimmer {
@@ -878,12 +880,12 @@ function viewFile() {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 2.5rem 1.25rem;
   color: #6b7280;
 }
 .empty-state svg {
   margin-bottom: 1rem;
-  color: #d1d5db;
+  color: #0e7490;
 }
 .empty-state h3 {
   font-size: 1.125rem;
@@ -899,14 +901,14 @@ function viewFile() {
 
 /* Summary */
 .summary-card {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
 }
 .summary-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
 }
 .report-type-badge {
@@ -916,26 +918,26 @@ function viewFile() {
   letter-spacing: 0.08em;
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
-  margin-bottom: 0.625rem;
+  margin-bottom: 0.5rem;
 }
 .type-blood {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #ecfeff;
+  color: #0e7490;
 }
 .type-dna {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 .type-other {
-  background: #f3e8ff;
-  color: #6b21a8;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .report-title {
   font-size: 1.375rem;
   font-weight: 800;
   color: #111827;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.375rem;
   word-break: break-word;
 }
 .report-meta {
@@ -962,67 +964,85 @@ function viewFile() {
   background: #ef4444;
 }
 .status-pending,
-.status-processing {
+.status-processing,
+.status-queued {
   background: #f59e0b;
+}
+.status-failed,
+.status-error {
+  background: #e11d48;
 }
 .summary-text {
   font-size: 0.9375rem;
   color: #374151;
   line-height: 1.65;
+  margin: 0;
 }
 
 /* Risk ring */
-.risk-score-ring {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
+.health-score-card {
+  flex: 0 1 13.5rem;
+  min-width: 12rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #cbe8ee;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #ecfeff 0%, #f8fafc 100%);
 }
-.risk-score-ring svg {
-  position: absolute;
-  top: 0;
-  left: 0;
+.health-score-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #0e6178;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
-.risk-number {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -60%);
-  font-size: 1.25rem;
+.health-score-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0.5rem 0 0;
+  font-size: 2.375rem;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -0.04em;
 }
-.risk-label {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.625rem;
+.health-score-scale {
+  color: #64748b;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
-:root {
-  --ring-bg: #f3f4f6;
+.health-score-track {
+  height: 0.5rem;
+  margin-top: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbe5ed;
+}
+.health-score-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.health-score-caption {
+  margin: 0.625rem 0 0;
+  color: #526579;
+  font-size: 0.6875rem;
+  line-height: 1.45;
 }
 
 /* Two column layout */
 .two-col {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
-}
-@media (max-width: 768px) {
-  .two-col {
-    grid-template-columns: 1fr;
-  }
 }
 .right-col {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 .right-col .card {
   margin-bottom: 0;
@@ -1032,7 +1052,7 @@ function viewFile() {
 .findings-list {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.75rem;
 }
 .finding-item {
   padding: 0.875rem;
@@ -1138,6 +1158,17 @@ function viewFile() {
   border-radius: 999px;
   transition: width 0.4s ease;
 }
+@media (prefers-reduced-motion: reduce) {
+  .health-score-fill,
+  .severity-fill {
+    transition: none;
+  }
+
+  .skeleton {
+    animation: none;
+    background: #f1f5f9;
+  }
+}
 .severity-num {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1147,8 +1178,13 @@ function viewFile() {
 }
 
 /* Markers table */
+.markers-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
 .markers-table {
   width: 100%;
+  min-width: 28rem;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -1186,9 +1222,9 @@ function viewFile() {
 .even-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  gap: 1rem;
   align-items: start;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
 }
 .even-col .card {
   margin-bottom: 0;
@@ -1359,23 +1395,15 @@ function viewFile() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  color: #0e7490;
   flex-shrink: 0;
 }
-.rec-diet {
-  background: #dcfce7;
-}
-.rec-exercise {
-  background: #dbeafe;
-}
-.rec-sleep {
-  background: #fef9c3;
-}
-.rec-supp {
-  background: #f3e8ff;
-}
+.rec-diet,
+.rec-exercise,
+.rec-sleep,
+.rec-supp,
 .rec-followup {
-  background: #f0f9ff;
+  background: #ecfeff;
 }
 .rec-heading {
   font-size: 0.8125rem;

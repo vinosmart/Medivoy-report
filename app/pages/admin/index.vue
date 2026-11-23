@@ -1,32 +1,31 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-    >
-      <div class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Admin console
-        </span>
-        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-          Manage users, reports, labs and partner workflows.
-        </h3>
-        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-          Overview of platform activity with real data from users, reports,
-          family records, orders and genetics profiles.
-        </p>
-      </div>
-    </section>
+    <PageHeading
+      :icon="IconShield"
+      eyebrow="Admin console"
+      title="Platform overview"
+      description="Review user accounts, reports, lab activity, and partner workflows."
+    />
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <div
         v-for="stat in stats"
         :key="stat.label"
-        class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+        class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
       >
-        <p class="text-sm text-slate-500">{{ stat.label }}</p>
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm text-slate-500">{{ stat.label }}</p>
+          <div
+            class="grid size-10 place-items-center rounded-xl bg-cyan-50 text-cyan-800"
+          >
+            <component
+              :is="stat.icon"
+              :size="19"
+              :stroke-width="1.8"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
         <p class="mt-3 text-3xl font-bold text-slate-950">{{ stat.value }}</p>
         <p class="mt-1 text-xs text-slate-500">{{ stat.help }}</p>
       </div>
@@ -34,9 +33,9 @@
 
     <section class="grid gap-6 xl:grid-cols-12">
       <div
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-7"
+        class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-7"
       >
-        <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 class="text-lg font-semibold text-slate-950">Recent reports</h4>
             <p class="text-sm text-slate-500">
@@ -78,7 +77,7 @@
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
                   {{ r.type?.toUpperCase() }} · User:
-                  {{ r.userEmail || r.userId || "—" }}
+                  {{ r.userEmail || r.userId || "-" }}
                 </p>
               </div>
               <div class="text-right">
@@ -93,7 +92,7 @@
       </div>
 
       <div
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-5"
+        class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-5"
       >
         <div class="mb-4">
           <h4 class="text-lg font-semibold text-slate-950">Top users</h4>
@@ -135,25 +134,35 @@
 
     <section class="grid gap-6 xl:grid-cols-3">
       <div
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2"
+        class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-2"
       >
-        <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 class="text-lg font-semibold text-slate-950">All users</h4>
             <p class="text-sm text-slate-500">
               Accounts with report counts and latest activity
             </p>
           </div>
-          <input
-            v-model="userSearch"
-            type="text"
-            placeholder="Search users"
-            class="w-full max-w-xs rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white"
-          />
+          <label class="sr-only" for="user-search">Search users</label>
+          <div class="relative w-full sm:max-w-xs">
+            <IconSearch
+              :size="17"
+              :stroke-width="1.8"
+              class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <input
+              id="user-search"
+              v-model="userSearch"
+              type="search"
+              :placeholder="animatedUserSearchPlaceholder"
+              class="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-500 hover:border-slate-400 focus:border-cyan-700 focus:bg-white focus:ring-4 focus:ring-cyan-100"
+            />
+          </div>
         </div>
-        <div class="overflow-hidden rounded-2xl border border-slate-200">
+        <div class="overflow-hidden rounded-xl border border-slate-200">
           <div class="max-h-[480px] overflow-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <table class="min-w-[720px] w-full divide-y divide-slate-200 text-sm">
               <thead
                 class="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"
               >
@@ -201,7 +210,7 @@
         </div>
       </div>
 
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h4 class="text-lg font-semibold text-slate-950">Lab & workflow</h4>
         <p class="mt-1 text-sm text-slate-500">
           Kit orders, dispatched samples and partner lab work
@@ -232,10 +241,25 @@
 </template>
 
 <script setup lang="ts">
+import IconAlertTriangle from "@tabler/icons-vue/icons/IconAlertTriangle";
+import IconCircleCheck from "@tabler/icons-vue/icons/IconCircleCheck";
+import IconClipboardList from "@tabler/icons-vue/icons/IconClipboardList";
+import IconDna from "@tabler/icons-vue/icons/IconDna";
+import IconFiles from "@tabler/icons-vue/icons/IconFiles";
+import IconShield from "@tabler/icons-vue/icons/IconShield";
+import IconSearch from "@tabler/icons-vue/icons/IconSearch";
+import IconUsersGroup from "@tabler/icons-vue/icons/IconUsersGroup";
+
 definePageMeta({ middleware: "auth" });
+
 const api = useMedivoyApi();
 const loading = ref(true);
 const userSearch = ref("");
+const animatedUserSearchPlaceholder = useAnimatedPlaceholder([
+  "Search users",
+  "Search by email",
+  "Search by name",
+]);
 const users = ref<any[]>([]);
 const reports = ref<any[]>([]);
 const familyMembers = ref<any[]>([]);
@@ -262,16 +286,19 @@ const stats = computed(() => [
     label: "Users",
     value: String(users.value.length),
     help: "Registered accounts",
+    icon: IconUsersGroup,
   },
   {
     label: "Reports",
     value: String(reports.value.length),
     help: "Uploaded reports",
+    icon: IconFiles,
   },
   {
     label: "Orders",
     value: String(orders.value.length),
     help: "Kit orders placed",
+    icon: IconClipboardList,
   },
   {
     label: "Completed reports",
@@ -279,6 +306,7 @@ const stats = computed(() => [
       reports.value.filter((r: any) => r.status === "completed").length,
     ),
     help: "AI analysis complete",
+    icon: IconCircleCheck,
   },
   {
     label: "Failed jobs",
@@ -286,11 +314,13 @@ const stats = computed(() => [
       reports.value.filter((r: any) => r.status === "failed").length,
     ),
     help: "Processing errors",
+    icon: IconAlertTriangle,
   },
   {
     label: "Genetics profiles",
     value: String(genetics.value.length),
     help: "Saved DNA analyses",
+    icon: IconDna,
   },
 ]);
 

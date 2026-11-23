@@ -55,6 +55,12 @@ export class Report {
   @Column({ default: 'processing' })
   status: string
 
+  @Column({ type: 'int', default: 0 })
+  progress: number
+
+  @Column({ default: 'Queued' })
+  processingStage: string
+
   @Column({ nullable: true, type: 'float' })
   riskScore: number | null
 

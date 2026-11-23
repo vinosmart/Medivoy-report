@@ -1,25 +1,11 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-    >
-      <div class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          AI nutrition guidance
-        </span>
-        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-          Personalized diet, vitamin, and habit guidance.
-        </h3>
-        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-          Choose your health goal and generate recommendations using your
-          profile and latest report data. Family member selection has been
-          removed for a cleaner experience.
-        </p>
-      </div>
-    </section>
+    <PageHeading
+      :icon="IconSalad"
+      title="Nutrition guidance"
+      description="Get practical food and habit recommendations based on your health profile and selected goals."
+      eyebrow="Nutrition"
+    />
 
     <section
       class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5"
@@ -28,7 +14,7 @@
         class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
       >
         <div>
-          <h3 class="text-2xl font-bold text-slate-950">Nutrition</h3>
+          <h3 class="text-xl font-semibold text-slate-950">Personalize your plan</h3>
           <p class="text-sm text-slate-500">
             AI-powered personalised guidance based on your health profile and
             medical reports.
@@ -43,71 +29,47 @@
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3">
-        <select
-          v-model="profile.goal"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        >
-          <option value="">Health goal</option>
-          <option value="weight_loss">Weight loss</option>
-          <option value="muscle_gain">Muscle gain</option>
-          <option value="heart_health">Heart health</option>
-          <option value="diabetes_control">Diabetes control</option>
-          <option value="longevity">Longevity</option>
-          <option value="energy">Energy and focus</option>
-        </select>
-        <select
-          v-model="profile.diet"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        >
-          <option value="">Diet type</option>
-          <option value="omnivore">Omnivore</option>
-          <option value="vegetarian">Vegetarian</option>
-          <option value="vegan">Vegan</option>
-          <option value="keto">Keto</option>
-          <option value="mediterranean">Mediterranean</option>
-        </select>
-        <select
-          v-model="profile.region"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        >
-          <option value="">Region</option>
-          <option value="south_asian">South Asian</option>
-          <option value="east_asian">East Asian</option>
-          <option value="african">African</option>
-          <option value="western">Western</option>
-          <option value="middle_eastern">Middle Eastern</option>
-        </select>
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Health goal</span>
+          <ProfessionalSelect
+            id="nutrition-goal"
+            v-model="profile.goal"
+            :options="goalOptions"
+            placeholder="Choose a goal"
+          />
+        </label>
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Diet type</span>
+          <ProfessionalSelect
+            id="nutrition-diet"
+            v-model="profile.diet"
+            :options="dietOptions"
+            placeholder="Choose a diet"
+          />
+        </label>
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Region</span>
+          <ProfessionalSelect
+            id="nutrition-region"
+            v-model="profile.region"
+            :options="regionOptions"
+            placeholder="Choose a region"
+          />
+        </label>
       </div>
 
       <button
         @click="generate"
         :disabled="generating"
-        class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        class="medivoy-primary-button inline-flex items-center gap-2 rounded-xl bg-cyan-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-900/15 transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-cyan-800"
       >
-        <svg
-          v-if="generating"
-          class="h-4 w-4 animate-spin"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          />
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v8z"
-          />
-        </svg>
+        <IconSparkles v-if="!generating" :size="18" aria-hidden="true" />
+        <IconLoader2 v-else :size="18" class="animate-spin" aria-hidden="true" />
         {{ generating ? "Generating..." : "Generate guidance" }}
       </button>
       <p
         v-if="error"
+        role="alert"
         class="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
       >
         {{ error }}
@@ -208,12 +170,24 @@
 </template>
 
 <script setup lang="ts">
+import IconLoader2 from "@tabler/icons-vue/icons/IconLoader2";
+import IconSparkles from "@tabler/icons-vue/icons/IconSparkles";
+import IconSalad from "@tabler/icons-vue/icons/IconSalad";
+import {
+  dietTypeOptions,
+  healthGoalOptions,
+  healthRegionOptions,
+} from "~/utils/profileOptions";
+
 const api = useMedivoyApi();
 const guidance = ref<any | null>(null);
 const generating = ref(false);
 const reportLoading = ref(false);
 const error = ref("");
 const profile = reactive({ goal: "", diet: "", region: "" });
+const goalOptions = healthGoalOptions;
+const dietOptions = dietTypeOptions;
+const regionOptions = healthRegionOptions;
 
 onMounted(async () => {
   const saved = await api.getProfile().catch(() => null);

@@ -6,13 +6,20 @@ export const useMedivoyApi = () => {
   const baseURL = config.public.apiBase || 'https://api-geno.medivoy.ae/api'
 
   const headers = (): Record<string, string> => {
-    const h: Record<string, string> = {}
+    return auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+  }
 
-    if (auth.token) {
-      h.Authorization = `Bearer ${auth.token}`
+  const apiFetch = <T>(
+    url: string,
+    options: Parameters<typeof $fetch>[1] = {},
+  ) => {
+    if (!auth.token) {
+      return Promise.reject(
+        new Error("Please sign in to access your health information."),
+      );
     }
 
-    return h
+    return $fetch<T>(url, { ...options, headers: headers() })
   }
 
   return {
@@ -31,97 +38,76 @@ export const useMedivoyApi = () => {
 
     // Reports
     getReports: () =>
-      $fetch<any[]>(`${baseURL}/reports`, {
-        headers: headers(),
-      }),
+      apiFetch<any[]>(`${baseURL}/reports`),
 
     getReport: (id: string) =>
-      $fetch<any>(`${baseURL}/reports/${id}`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/reports/${id}`),
 
     uploadReport: (formData: FormData) =>
-      $fetch<any>(`${baseURL}/reports/upload`, {
+      apiFetch<any>(`${baseURL}/reports/upload`, {
         method: 'POST',
         body: formData,
-        headers: headers(),
       }),
 
     deleteReport: (id: string) =>
-      $fetch<any>(`${baseURL}/reports/${id}`, {
+      apiFetch<any>(`${baseURL}/reports/${id}`, {
         method: 'DELETE',
-        headers: headers(),
       }),
 
     // Family
     getFamilyMembers: () =>
-      $fetch<any[]>(`${baseURL}/family`, {
-        headers: headers(),
-      }),
+      apiFetch<any[]>(`${baseURL}/family`),
 
     addFamilyMember: (data: any) =>
-      $fetch<any>(`${baseURL}/family`, {
+      apiFetch<any>(`${baseURL}/family`, {
         method: 'POST',
         body: data,
-        headers: headers(),
       }),
 
     deleteFamilyMember: (id: string) =>
-      $fetch<any>(`${baseURL}/family/${id}`, {
+      apiFetch<any>(`${baseURL}/family/${id}`, {
         method: 'DELETE',
-        headers: headers(),
       }),
 
     // Orders
     getOrders: () =>
-      $fetch<any[]>(`${baseURL}/orders`, {
-        headers: headers(),
-      }),
+      apiFetch<any[]>(`${baseURL}/orders`),
 
     placeOrder: (data: any) =>
-      $fetch<any>(`${baseURL}/orders`, {
+      apiFetch<any>(`${baseURL}/orders`, {
         method: 'POST',
         body: data,
-        headers: headers(),
       }),
 
     updateOrderStatus: (id: string, status: string) =>
-      $fetch<any>(`${baseURL}/orders/${id}/status`, {
+      apiFetch<any>(`${baseURL}/orders/${id}/status`, {
         method: 'PATCH',
         body: { status },
-        headers: headers(),
       }),
 
     deleteOrder: (id: string) =>
-      $fetch<any>(`${baseURL}/orders/${id}`, {
+      apiFetch<any>(`${baseURL}/orders/${id}`, {
         method: 'DELETE',
-        headers: headers(),
       }),
 
     // Profile
     getProfile: () =>
-      $fetch<any>(`${baseURL}/profile`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/profile`),
 
     saveProfile: (data: any) =>
-      $fetch<any>(`${baseURL}/profile`, {
+      apiFetch<any>(`${baseURL}/profile`, {
         method: 'POST',
         body: data,
-        headers: headers(),
       }),
 
     // Genetics
     getGenetics: () =>
-      $fetch<any>(`${baseURL}/genetics`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/genetics`),
 
     saveGenetics: (data: any) =>
-      $fetch<any>(`${baseURL}/genetics`, {
+      apiFetch<any>(`${baseURL}/genetics`, {
         method: 'POST',
         body: data,
-        headers: headers(),
       }),
 
     // Nutrition
@@ -135,31 +121,22 @@ export const useMedivoyApi = () => {
       conditions?: string
       reportSummary?: string
     }) =>
-      $fetch<any>(`${baseURL}/nutrition/guidance`, {
+      apiFetch<any>(`${baseURL}/nutrition/guidance`, {
         method: 'POST',
         body: payload,
-        headers: headers(),
       }),
 
     // Pharmacy
     searchMedicines: (query: string, take = 20) =>
-      $fetch<any>(`${baseURL}/pharmacy/medicines?q=${encodeURIComponent(query)}&take=${take}`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/pharmacy/medicines?q=${encodeURIComponent(query)}&take=${take}`),
 
     getDoctors: (specialty?: string) =>
-      $fetch<any>(`${baseURL}/pharmacy/doctors${specialty ? `?specialty=${encodeURIComponent(specialty)}` : ''}`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/pharmacy/doctors${specialty ? `?specialty=${encodeURIComponent(specialty)}` : ''}`),
 
     getPharmacies: (lat: number, lng: number) =>
-      $fetch<any>(`${baseURL}/pharmacy/pharmacies?lat=${lat}&lng=${lng}`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/pharmacy/pharmacies?lat=${lat}&lng=${lng}`),
 
     getPharmacySuggestions: (reportId?: string) =>
-      $fetch<any>(`${baseURL}/pharmacy/suggestions${reportId ? `?reportId=${encodeURIComponent(reportId)}` : ''}`, {
-        headers: headers(),
-      }),
+      apiFetch<any>(`${baseURL}/pharmacy/suggestions${reportId ? `?reportId=${encodeURIComponent(reportId)}` : ''}`),
   }
 }

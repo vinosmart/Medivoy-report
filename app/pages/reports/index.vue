@@ -1,83 +1,92 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
+    <PageHeading
+      :icon="IconFiles"
+      title="Your health reports"
+      description="Search your uploaded records, review their analysis, and manage the files in your health history."
+      eyebrow="Reports"
     >
-      <div
-        class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
-      >
-        <div class="max-w-2xl">
-          <span
-            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-          >
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-            Reports center
-          </span>
-          <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-            View, manage, and delete uploaded reports.
-          </h3>
-          <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-            Search your reports, open the full analysis, and remove items you no
-            longer need. This view is connected to live user data from your API.
-          </p>
-        </div>
-        <div class="flex gap-3">
+      <template #actions>
           <NuxtLink
             to="/reports/upload"
-            class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm hover:bg-slate-100"
-            >Upload report</NuxtLink
+            class="medivoy-primary-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900 active:scale-[0.98]"
           >
+            <IconUpload :size="18" aria-hidden="true" />
+            Upload report
+          </NuxtLink>
           <button
             @click="loadReports"
             :disabled="loading"
-            class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-white backdrop-blur hover:bg-white/10 disabled:opacity-60"
+            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <IconRefresh
+              :size="18"
+              :class="{ 'motion-safe:animate-spin': loading }"
+              aria-hidden="true"
+            />
             {{ loading ? "Refreshing..." : "Refresh" }}
           </button>
-        </div>
-      </div>
-    </section>
+      </template>
+    </PageHeading>
 
     <section
-      class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
+      class="rounded-3xl border border-cyan-100/80 bg-white p-4 shadow-[0_14px_38px_-30px_rgba(14,116,144,0.42)] sm:p-6"
     >
       <div
         class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
       >
-        <div class="relative w-full lg:max-w-md">
+        <div class="relative w-full lg:max-w-lg">
+          <IconSearch
+            :size="18"
+            :stroke-width="1.8"
+            class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
           <input
             v-model="search"
             type="text"
-            placeholder="Search by title, type or status"
-            class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
+            :placeholder="animatedSearchPlaceholder"
+            aria-label="Search reports"
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 hover:border-cyan-300 focus:border-cyan-700 focus:bg-white focus:ring-4 focus:ring-cyan-100"
           />
+          <button
+            v-if="search"
+            type="button"
+            class="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+            aria-label="Clear search"
+            @click="search = ''"
+          >
+            <IconX :size="16" :stroke-width="1.8" aria-hidden="true" />
+          </button>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
           <div
-            class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200"
+            class="rounded-xl border border-cyan-100 bg-cyan-50 px-3.5 py-2.5 text-sm font-semibold text-cyan-900"
           >
-            {{ filteredReports.length }} report{{
-              filteredReports.length === 1 ? "" : "s"
-            }}
+            {{ reportCountLabel }}
           </div>
 
-          <label
-            class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700"
+          <ProfessionalCheckbox
+            v-model="selectAll"
+            :disabled="loading || !!loadError || filteredReports.length === 0"
+            aria-label="Select all reports"
+            class="rounded-xl border border-slate-200 bg-white px-3.5"
           >
-            <input
-              v-model="selectAll"
-              type="checkbox"
-              class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
             Select all
-          </label>
+          </ProfessionalCheckbox>
 
           <button
             @click="bulkDeleteSelected"
-            :disabled="selectedIds.length === 0 || deletingBulk"
-            class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+            :disabled="!!loadError || selectedIds.length === 0 || deletingBulk"
+            :class="
+              selectedIds.length
+                ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'
+                : 'border border-slate-200 bg-slate-100 text-slate-500'
+            "
+            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
           >
+            <IconTrash :size="16" aria-hidden="true" />
             {{
               deletingBulk
                 ? "Deleting..."
@@ -85,6 +94,14 @@
             }}
           </button>
         </div>
+      </div>
+
+      <div
+        v-if="actionError"
+        role="alert"
+        class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+      >
+        {{ actionError }}
       </div>
 
       <div v-if="loading" class="space-y-3">
@@ -99,70 +116,108 @@
         </div>
       </div>
 
+      <div
+        v-else-if="loadError"
+        class="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center"
+      >
+        <p role="alert" class="text-sm font-medium text-rose-800">
+          {{ loadError }}
+        </p>
+        <button
+          type="button"
+          class="medivoy-primary-button mt-4 inline-flex min-h-10 items-center justify-center rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-900"
+          @click="loadReports"
+        >
+          Try again
+        </button>
+      </div>
+
       <div v-else-if="filteredReports.length" class="space-y-3">
         <article
           v-for="report in filteredReports"
           :key="report.id"
-          class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
+          class="group rounded-2xl border p-4 transition duration-200 motion-reduce:transition-none"
+          :class="
+            selectedIds.includes(report.id)
+              ? 'border-cyan-300 bg-cyan-50/50 shadow-sm'
+              : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-cyan-200 hover:bg-cyan-50/20 hover:shadow-[0_12px_28px_-20px_rgba(14,116,144,0.5)]'
+          "
         >
           <div
             class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"
           >
             <div class="flex min-w-0 flex-1 items-start gap-3">
-              <input
-                v-model="selectedIds"
-                :value="report.id"
-                type="checkbox"
-                class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              <ProfessionalCheckbox
+                :model-value="selectedIds.includes(report.id)"
+                :aria-label="`Select ${report.title}`"
+                class="mt-0.5"
+                @update:model-value="toggleReportSelection(report.id, $event)"
               />
+              <span
+                class="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-800 ring-1 ring-inset ring-cyan-100 transition group-hover:bg-white"
+                aria-hidden="true"
+              >
+                <IconFileText :size="19" :stroke-width="1.8" />
+              </span>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <h4 class="truncate text-base font-semibold text-slate-950">
                     {{ report.title }}
                   </h4>
                   <span
-                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    class="rounded-full border px-2.5 py-1 text-xs font-semibold"
                     :class="statusClass(report.status)"
-                    >{{ report.status }}</span
+                    >{{ statusLabel(report.status) }}</span
                   >
                   <span
-                    class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"
+                    class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600"
                     >{{ report.type?.toUpperCase() }}</span
                   >
                 </div>
-                <p class="mt-2 text-xs text-slate-500">
+                <p class="mt-2 text-xs font-medium text-slate-500">
                   {{ formatDate(report.createdAt) }}
                 </p>
                 <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                  {{ report.aiSummary || "No summary available yet." }}
+                  {{ report.aiSummary || report.summary || "No summary is available for this report yet." }}
                 </p>
               </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
               <div
-                class="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-200"
+                class="min-w-[4.25rem] rounded-2xl border px-3 py-2.5 text-center transition-colors"
+                :class="healthScoreSurfaceClass(reportScore(report))"
               >
-                <p class="text-xs text-slate-500">Risk</p>
+                <p class="text-xs font-medium">Health score</p>
                 <p
-                  class="text-lg font-bold"
-                  :class="riskClass(report.riskScore)"
+                  class="mt-0.5 text-lg font-bold tabular-nums"
+                  :class="healthScoreClass(reportScore(report))"
                 >
-                  {{ report.riskScore ?? "-" }}
+                  {{ reportScore(report) ?? "-" }}
                 </p>
               </div>
 
               <div class="flex gap-2">
                 <NuxtLink
                   :to="`/reports/${report.id}`"
-                  class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >View</NuxtLink
+                  class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-900 transition hover:border-cyan-400 hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2 active:scale-[0.98]"
                 >
+                  <IconEye :size="16" aria-hidden="true" />
+                  View
+                </NuxtLink>
                 <button
                   @click="deleteReport(report.id)"
                   :disabled="deletingId === report.id"
-                  class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+                  :aria-label="`Delete ${report.title}`"
+                  class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
                 >
+                  <IconLoader2
+                    v-if="deletingId === report.id"
+                    :size="16"
+                    class="motion-safe:animate-spin"
+                    aria-hidden="true"
+                  />
+                  <IconTrash v-else :size="16" aria-hidden="true" />
                   {{ deletingId === report.id ? "Deleting..." : "Delete" }}
                 </button>
               </div>
@@ -171,7 +226,7 @@
         </article>
       </div>
 
-      <div v-else class="rounded-2xl bg-slate-50 p-10 text-center">
+      <div v-else class="rounded-2xl border border-slate-200 bg-slate-50/80 p-10 text-center">
         <p class="text-sm font-medium text-slate-700">
           {{ search ? "No matching reports found." : "No reports yet." }}
         </p>
@@ -180,7 +235,7 @@
         </p>
         <NuxtLink
           to="/reports/upload"
-          class="mt-4 inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white! hover:bg-slate-800"
+          class="medivoy-primary-button mt-4 inline-flex items-center justify-center rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white! shadow-lg shadow-cyan-900/15 transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2 active:scale-[0.98]"
           >Upload report</NuxtLink
         >
       </div>
@@ -189,13 +244,33 @@
 </template>
 
 <script setup lang="ts">
+import IconEye from "@tabler/icons-vue/icons/IconEye";
+import IconFileText from "@tabler/icons-vue/icons/IconFileText";
+import IconFiles from "@tabler/icons-vue/icons/IconFiles";
+import IconLoader2 from "@tabler/icons-vue/icons/IconLoader2";
+import IconRefresh from "@tabler/icons-vue/icons/IconRefresh";
+import IconSearch from "@tabler/icons-vue/icons/IconSearch";
+import IconTrash from "@tabler/icons-vue/icons/IconTrash";
+import IconUpload from "@tabler/icons-vue/icons/IconUpload";
+import IconX from "@tabler/icons-vue/icons/IconX";
+import { getApiErrorMessage } from "~/utils/apiError";
+import { getDeduplicatedReports } from "~/utils/getDeduplicatedReports";
+
 const api = useMedivoyApi();
+const auth = useAuthStore();
 const reports = ref<any[]>([]);
 const loading = ref(true);
 const deletingId = ref<string | null>(null);
 const deletingBulk = ref(false);
 const search = ref("");
+const animatedSearchPlaceholder = useAnimatedPlaceholder([
+  "Search by title",
+  "Search by report type",
+  "Search by status",
+]);
 const selectedIds = ref<string[]>([]);
+const loadError = ref("");
+const actionError = ref("");
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("en-US", {
@@ -214,6 +289,12 @@ const filteredReports = computed(() => {
   );
 });
 
+const reportCountLabel = computed(() => {
+  if (loading.value) return "Loading reports";
+  if (loadError.value) return "Reports unavailable";
+  return `${filteredReports.value.length} report${filteredReports.value.length === 1 ? "" : "s"}`;
+});
+
 const selectAll = computed({
   get: () =>
     filteredReports.value.length > 0 &&
@@ -228,27 +309,76 @@ watch(filteredReports, (items) => {
   selectedIds.value = selectedIds.value.filter((id) => ids.has(id));
 });
 
-const riskClass = (score?: number) =>
-  !score
-    ? "text-slate-500"
-    : score >= 60
-      ? "text-rose-600"
-      : score >= 30
-        ? "text-amber-600"
-        : "text-emerald-600";
-const statusClass = (status?: string) =>
-  status === "completed"
-    ? "bg-emerald-100 text-emerald-700"
-    : status === "failed"
-      ? "bg-rose-100 text-rose-700"
-      : "bg-amber-100 text-amber-700";
+const toggleReportSelection = (id: string, selected: boolean) => {
+  if (selected) {
+    if (!selectedIds.value.includes(id)) selectedIds.value.push(id);
+  } else {
+    selectedIds.value = selectedIds.value.filter((selectedId) => selectedId !== id);
+  }
+};
+
+const reportScore = (report: any): number | undefined => {
+  const score = report.overallHealthScore ?? report.riskScore;
+  if (score == null || score === "") return undefined;
+
+  const numericScore = Number(score);
+  return Number.isFinite(numericScore) ? numericScore : undefined;
+};
+
+const healthScoreClass = (score?: number) => {
+  if (score == null || !Number.isFinite(Number(score))) return "text-slate-500";
+  if (score >= 75) return "text-emerald-700";
+  if (score >= 50) return "text-amber-700";
+  if (score >= 25) return "text-orange-700";
+  return "text-rose-700";
+};
+
+const healthScoreSurfaceClass = (score?: number) => {
+  if (score == null || !Number.isFinite(Number(score))) {
+    return "border-slate-200 bg-slate-50 text-slate-600";
+  }
+  if (score >= 75) return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (score >= 50) return "border-amber-200 bg-amber-50 text-amber-800";
+  if (score >= 25) return "border-orange-200 bg-orange-50 text-orange-800";
+  return "border-rose-200 bg-rose-50 text-rose-800";
+};
+
+const statusLabel = (status?: string) => {
+  const normalized = status?.toLowerCase();
+  if (normalized === "done" || normalized === "completed") return "Completed";
+  if (normalized === "failed" || normalized === "error") return "Failed";
+  if (normalized === "processing") return "Processing";
+  if (normalized === "queued") return "Queued";
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown";
+};
+
+const statusClass = (status?: string) => {
+  const normalized = status?.toLowerCase();
+  if (normalized === "done" || normalized === "completed") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (normalized === "failed" || normalized === "error") {
+    return "border-rose-200 bg-rose-50 text-rose-800";
+  }
+  if (normalized === "processing" || normalized === "queued") {
+    return "border-cyan-200 bg-cyan-50 text-cyan-900";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-700";
+};
 
 const loadReports = async () => {
   loading.value = true;
+  loadError.value = "";
   try {
-    reports.value = await api.getReports();
-  } catch {
+    reports.value = await getDeduplicatedReports(auth.token, () =>
+      api.getReports(),
+    );
+  } catch (error) {
     reports.value = [];
+    loadError.value = getApiErrorMessage(
+      error,
+      "We couldn't load your reports. Please try again.",
+    );
   } finally {
     loading.value = false;
   }
@@ -256,11 +386,17 @@ const loadReports = async () => {
 
 const deleteReport = async (id: string) => {
   if (!window.confirm("Delete this report?")) return;
+  actionError.value = "";
   deletingId.value = id;
   try {
     await api.deleteReport(id);
     reports.value = reports.value.filter((r) => r.id !== id);
     selectedIds.value = selectedIds.value.filter((x) => x !== id);
+  } catch (error) {
+    actionError.value = getApiErrorMessage(
+      error,
+      "We couldn't delete this report. Please try again.",
+    );
   } finally {
     deletingId.value = null;
   }
@@ -270,6 +406,7 @@ const bulkDeleteSelected = async () => {
   if (!selectedIds.value.length) return;
   if (!window.confirm(`Delete ${selectedIds.value.length} selected reports?`))
     return;
+  actionError.value = "";
   deletingBulk.value = true;
   try {
     for (const id of [...selectedIds.value]) {
@@ -277,6 +414,11 @@ const bulkDeleteSelected = async () => {
       reports.value = reports.value.filter((r) => r.id !== id);
     }
     selectedIds.value = [];
+  } catch (error) {
+    actionError.value = getApiErrorMessage(
+      error,
+      "We couldn't delete all selected reports. Please try again.",
+    );
   } finally {
     deletingBulk.value = false;
   }
