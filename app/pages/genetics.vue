@@ -1,33 +1,23 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-    >
-      <div class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Genetic risk profiling
-        </span>
-        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-          Personalised health risk profile from DNA markers.
-        </h3>
-        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-          Upload a DNA report PDF or enter variants manually to get an
-          easy-to-read genetic risk summary and recommendations.
-        </p>
-      </div>
-    </section>
+    <PageHeading
+      :icon="IconDna"
+      title="Genetic health profile"
+      description="Review DNA report findings or enter known variants to build a clear, easy-to-read profile."
+      eyebrow="Genetics"
+    />
 
     <section class="grid gap-6 xl:grid-cols-12">
-      <div class="space-y-6 xl:col-span-5">
+      <div
+        class="space-y-6"
+        :class="result ? 'xl:col-span-5' : 'xl:col-span-12'"
+      >
         <div
-          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4"
+          class="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6 sm:space-y-0"
         >
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center justify-between gap-3 sm:flex-1">
             <div>
-              <p class="text-base font-semibold text-white">
+              <p class="text-base font-semibold text-slate-950">
                 Upload DNA report
               </p>
               <p class="mt-1 text-sm text-slate-500">
@@ -36,14 +26,14 @@
               </p>
             </div>
             <div
-              class="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-2xl"
+              class="hidden h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-800 sm:flex"
             >
-              🧬
+              <IconDna :size="22" :stroke-width="1.8" aria-hidden="true" />
             </div>
           </div>
           <NuxtLink
             to="/reports/upload"
-            class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white! shadow-lg shadow-slate-950/10 hover:bg-slate-800"
+            class="medivoy-primary-button inline-flex shrink-0 items-center justify-center rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white! shadow-lg shadow-cyan-900/15 transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2 active:scale-[0.98]"
             >Upload DNA report</NuxtLink
           >
         </div>
@@ -56,62 +46,50 @@
               Or enter variants manually
             </p>
             <p class="mt-1 text-sm text-slate-500">
-              Use the dropdowns below to build a quick genetic profile.
+              Select the variants you know, then analyze to review your findings.
             </p>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div v-for="gene in genes" :key="gene.name" class="space-y-1">
               <label
+                :for="`variant-${gene.name}`"
                 class="text-xs font-medium uppercase tracking-wide text-slate-500"
                 >{{ gene.name }}</label
               >
-              <select
+              <ProfessionalSelect
+                :id="`variant-${gene.name}`"
                 v-model="variants[gene.name]"
-                class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-              >
-                <option value="">Unknown</option>
-                <option v-for="opt in gene.options" :key="opt" :value="opt">
-                  {{ opt }}
-                </option>
-              </select>
+                :options="[{ value: '', label: 'Unknown' }, ...gene.options.map(opt => ({ value: opt, label: opt }))]"
+                placeholder="Unknown"
+              />
             </div>
           </div>
           <button
             @click="analyze"
-            :disabled="saving"
-            class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/10 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="saving || loading"
+            class="medivoy-primary-button inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <svg
+            <IconLoader2
               v-if="saving"
-              class="h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8z"
-              />
-            </svg>
+              :size="17"
+              class="animate-spin"
+              aria-hidden="true"
+            />
+            <IconDna v-else :size="17" aria-hidden="true" />
             {{ saving ? "Saving..." : "Analyze variants" }}
           </button>
+          <p
+            v-if="actionError"
+            role="alert"
+            class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+          >
+            {{ actionError }}
+          </p>
         </div>
       </div>
 
-      <div class="space-y-6 xl:col-span-7">
-        <div v-if="loading" class="space-y-3 animate-pulse">
-          <div class="h-24 rounded-3xl bg-slate-100"></div>
-        </div>
-
-        <div v-else-if="result" class="space-y-6">
+      <div v-if="result" class="space-y-6 xl:col-span-7">
+        <div class="space-y-6">
           <section class="grid gap-4 sm:grid-cols-3">
             <div
               class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -224,20 +202,37 @@
           </section>
         </div>
 
-        <div
-          v-else
-          class="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500 shadow-sm"
-        >
-          Select variants and click
-          <span class="font-semibold text-slate-900">Analyze variants</span> to
-          generate a genetic health profile.
-        </div>
       </div>
     </section>
+
+    <div
+      v-if="loading"
+      role="status"
+      class="rounded-2xl border border-cyan-100 bg-white px-4 py-3 text-sm text-slate-600"
+    >
+      Checking for a saved genetic profile...
+    </div>
+    <div
+      v-else-if="loadError"
+      class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"
+    >
+      <p role="alert">{{ loadError }}</p>
+      <button
+        type="button"
+        class="mt-3 font-semibold text-cyan-900 underline underline-offset-2"
+        @click="loadGenetics"
+      >
+        Try again
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import IconDna from "@tabler/icons-vue/icons/IconDna";
+import IconLoader2 from "@tabler/icons-vue/icons/IconLoader2";
+import { getApiErrorMessage } from "~/utils/apiError";
+
 const api = useMedivoyApi();
 const genes = [
   { name: "APOE", options: ["E2/E2", "E2/E3", "E3/E3", "E3/E4", "E4/E4"] },
@@ -261,10 +256,14 @@ const genes = [
     options: ["Fast metaboliser", "Slow metabolism variant present"],
   },
 ];
-const variants = reactive<Record<string, string>>({});
+const variants = reactive<Record<string, string>>(
+  Object.fromEntries(genes.map(({ name }) => [name, ""])),
+);
 const result = ref<any | null>(null);
 const loading = ref(true);
 const saving = ref(false);
+const loadError = ref("");
+const actionError = ref("");
 const variantNotes: Record<string, string> = {
   APOE: "APOE E4 is associated with higher LDL and cardiovascular risk.",
   MTHFR: "MTHFR variants may affect folate metabolism.",
@@ -274,7 +273,9 @@ const variantNotes: Record<string, string> = {
   CYP1A2: "CYP1A2 slow variants affect caffeine metabolism.",
 };
 
-onMounted(async () => {
+const loadGenetics = async () => {
+  loading.value = true;
+  loadError.value = "";
   try {
     const saved = await api.getGenetics();
     if (saved) {
@@ -286,11 +287,18 @@ onMounted(async () => {
       };
       if (saved.variants) Object.assign(variants, saved.variants);
     }
-  } catch {
+  } catch (error) {
+    result.value = null;
+    loadError.value = getApiErrorMessage(
+      error,
+      "We couldn't load your genetic profile. Please try again.",
+    );
   } finally {
     loading.value = false;
   }
-});
+};
+
+onMounted(loadGenetics);
 
 function scoreVariant(name: string, value: string) {
   const v = value.toLowerCase();
@@ -306,6 +314,12 @@ function scoreVariant(name: string, value: string) {
 }
 
 const analyze = async () => {
+  actionError.value = "";
+  if (!genes.some((gene) => variants[gene.name])) {
+    actionError.value = "Select at least one genetic variant before analyzing.";
+    return;
+  }
+
   let riskScore = 20;
   const findings: any[] = [];
   const recs = new Set<string>();
@@ -352,6 +366,12 @@ const analyze = async () => {
   try {
     await api.saveGenetics(payload);
     result.value = payload;
+    loadError.value = "";
+  } catch (error) {
+    actionError.value = getApiErrorMessage(
+      error,
+      "We couldn't save your genetic analysis. Please try again.",
+    );
   } finally {
     saving.value = false;
   }

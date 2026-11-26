@@ -1,25 +1,11 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-    >
-      <div class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Home collection kits
-        </span>
-        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-          Order a home collection kit.
-        </h3>
-        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-          Your sample is processed by a Medivoy partner lab and results appear
-          here. You can add, edit, and delete kits from the admin panel or
-          inline controls.
-        </p>
-      </div>
-    </section>
+    <PageHeading
+      :icon="IconTestPipe"
+      title="Home collection kits"
+      description="Choose a test kit and track its order and lab status here."
+      eyebrow="Lab testing"
+    />
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <article
@@ -38,11 +24,18 @@
           >
         </div>
 
-        <div class="mt-4">
-          <p class="text-base font-bold text-slate-950">{{ kit.name }}</p>
+        <div class="mt-4 flex items-start gap-3">
+          <div
+            class="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-800"
+          >
+            <IconTestPipe :size="19" :stroke-width="1.8" aria-hidden="true" />
+          </div>
+          <div>
+            <p class="text-base font-bold text-slate-950">{{ kit.name }}</p>
           <p class="mt-1 text-sm leading-6 text-slate-500">
             {{ kit.description }}
           </p>
+          </div>
         </div>
 
         <div class="mt-5 flex flex-wrap gap-2">
@@ -54,31 +47,51 @@
           >
         </div>
 
-        <div class="mt-6 flex gap-2">
+        <div class="mt-6 grid grid-cols-2 gap-2">
           <button
             @click="placeOrder(kit)"
             :disabled="orderingId === kit.id"
-            class="flex-1 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            class="medivoy-primary-button col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <IconLoader2
+              v-if="orderingId === kit.id"
+              :size="16"
+              class="animate-spin"
+              aria-hidden="true"
+            />
+            <IconShoppingCart v-else :size="16" aria-hidden="true" />
             {{ orderingId === kit.id ? "Ordering..." : "Order kit" }}
           </button>
           <button
             @click="editKit(kit)"
-            class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
+            <IconPencil :size="16" aria-hidden="true" />
             Edit
           </button>
           <button
             @click="deleteKit(kit.id)"
-            class="rounded-xl border border-rose-200 px-4 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50"
+            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 px-3 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
           >
+            <IconTrash :size="16" aria-hidden="true" />
             Delete
           </button>
         </div>
       </article>
     </div>
 
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <p
+      v-if="orderError"
+      role="alert"
+      class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+    >
+      {{ orderError }}
+    </p>
+
+    <section
+      ref="ordersSection"
+      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+    >
       <div
         class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
       >
@@ -88,58 +101,93 @@
         </div>
         <button
           @click="showAddKit = !showAddKit"
-          class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+          class="medivoy-primary-button inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-900 active:scale-[0.99]"
         >
+          <IconX v-if="showAddKit" :size="17" aria-hidden="true" />
+          <IconPlus v-else :size="17" aria-hidden="true" />
           {{ showAddKit ? "Close" : "Add kit" }}
         </button>
       </div>
 
-      <div
+      <p
+        v-if="orderSuccess"
+        role="status"
+        class="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+      >
+        <IconCircleCheck :size="18" class="shrink-0" aria-hidden="true" />
+        {{ orderSuccess }}
+      </p>
+
+      <form
         v-if="showAddKit"
+        @submit.prevent="saveKit"
         class="mb-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4"
       >
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <input
-            v-model="kitForm.name"
-            placeholder="Kit name"
-            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
-          />
-          <input
-            v-model="kitForm.badge"
-            placeholder="Badge"
-            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
-          />
-          <input
-            v-model="kitForm.price"
-            placeholder="Price"
-            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
-          />
-          <input
-            v-model="kitForm.description"
-            placeholder="Description"
-            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
-          />
+          <label class="space-y-2 text-sm font-medium text-slate-700">
+            <span>Kit name</span>
+            <input
+              v-model="kitForm.name"
+              placeholder="For example, Vitamin panel"
+              required
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700"
+            />
+          </label>
+          <label class="space-y-2 text-sm font-medium text-slate-700">
+            <span>Badge</span>
+            <input
+              v-model="kitForm.badge"
+              placeholder="Optional category"
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700"
+            />
+          </label>
+          <label class="space-y-2 text-sm font-medium text-slate-700">
+            <span>Price (Rs.)</span>
+            <input
+              v-model="kitForm.price"
+              type="number"
+              min="0"
+              inputmode="decimal"
+              placeholder="Enter price"
+              required
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700"
+            />
+          </label>
+          <label class="space-y-2 text-sm font-medium text-slate-700">
+            <span>Description</span>
+            <input
+              v-model="kitForm.description"
+              placeholder="Briefly describe the test"
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700"
+            />
+          </label>
         </div>
-        <input
-          v-model="markersInput"
-          placeholder="Markers (comma separated)"
-          class="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
-        />
+        <label class="mt-3 block space-y-2 text-sm font-medium text-slate-700">
+          <span>Test markers</span>
+          <input
+            v-model="markersInput"
+            placeholder="Separate markers with commas"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700"
+          />
+        </label>
         <div class="mt-3 flex gap-2">
           <button
-            @click="saveKit"
-            class="rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            type="submit"
+            class="medivoy-primary-button inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-900 active:scale-[0.99]"
           >
+            <IconDeviceFloppy :size="17" aria-hidden="true" />
             Save kit
           </button>
           <button
+            type="button"
             @click="resetKitForm"
-            class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
+            <IconRefresh :size="16" aria-hidden="true" />
             Reset
           </button>
         </div>
-      </div>
+      </form>
 
       <div v-if="loading" class="space-y-3 animate-pulse">
         <div
@@ -176,6 +224,11 @@
         </div>
       </div>
       <div v-else class="py-8 text-center text-sm text-slate-400">
+        <IconClipboardList
+          :size="24"
+          class="mx-auto mb-2 text-slate-400"
+          aria-hidden="true"
+        />
         No orders yet. Order a kit above.
       </div>
     </section>
@@ -183,8 +236,24 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from "vue";
+import IconCircleCheck from "@tabler/icons-vue/icons/IconCircleCheck";
+import IconClipboardList from "@tabler/icons-vue/icons/IconClipboardList";
+import IconDeviceFloppy from "@tabler/icons-vue/icons/IconDeviceFloppy";
+import IconLoader2 from "@tabler/icons-vue/icons/IconLoader2";
+import IconPencil from "@tabler/icons-vue/icons/IconPencil";
+import IconPlus from "@tabler/icons-vue/icons/IconPlus";
+import IconRefresh from "@tabler/icons-vue/icons/IconRefresh";
+import IconShoppingCart from "@tabler/icons-vue/icons/IconShoppingCart";
+import IconTrash from "@tabler/icons-vue/icons/IconTrash";
+import IconTestPipe from "@tabler/icons-vue/icons/IconTestPipe";
+import IconX from "@tabler/icons-vue/icons/IconX";
+
 const api = useMedivoyApi();
 const orders = ref<any[]>([]);
+const orderError = ref("");
+const orderSuccess = ref("");
+const ordersSection = ref<HTMLElement | null>(null);
 const loading = ref(true);
 const orderingId = ref<number | string | null>(null);
 const showAddKit = ref(false);
@@ -203,7 +272,7 @@ const kits = ref<any[]>([
     id: 1,
     name: "Complete Blood Count",
     badge: "Popular",
-    badgeClass: "bg-emerald-100 text-emerald-700",
+    badgeClass: "bg-cyan-50 text-cyan-800",
     price: "799",
     description:
       "Full CBC panel to check for anaemia, infections, and blood cell health.",
@@ -221,7 +290,7 @@ const kits = ref<any[]>([
     id: 2,
     name: "Heart & Lipid Panel",
     badge: "Cardio",
-    badgeClass: "bg-rose-100 text-rose-700",
+    badgeClass: "bg-cyan-50 text-cyan-800",
     price: "999",
     description:
       "Cardiovascular risk markers including cholesterol and inflammation.",
@@ -238,7 +307,7 @@ const kits = ref<any[]>([
     id: 3,
     name: "Vitamin & Mineral Check",
     badge: "Nutrition",
-    badgeClass: "bg-blue-100 text-blue-700",
+    badgeClass: "bg-cyan-50 text-cyan-800",
     price: "1299",
     description:
       "Check for micronutrient deficiencies affecting energy and immunity.",
@@ -256,7 +325,7 @@ const kits = ref<any[]>([
     id: 4,
     name: "Thyroid Function",
     badge: "Hormones",
-    badgeClass: "bg-purple-100 text-purple-700",
+    badgeClass: "bg-cyan-50 text-cyan-800",
     price: "699",
     description: "Evaluate thyroid health for metabolism, energy, and mood.",
     markers: ["TSH", "T3", "T4", "Anti-TPO"],
@@ -265,7 +334,7 @@ const kits = ref<any[]>([
     id: 5,
     name: "Diabetes & Blood Sugar",
     badge: "Metabolic",
-    badgeClass: "bg-amber-100 text-amber-700",
+    badgeClass: "bg-cyan-50 text-cyan-800",
     price: "599",
     description: "Track glucose metabolism and long-term blood sugar control.",
     markers: ["Fasting Glucose", "HbA1c", "Insulin", "HOMA-IR"],
@@ -277,7 +346,7 @@ const kits = ref<any[]>([
     badgeClass: "bg-slate-100 text-slate-700",
     price: "2499",
     description:
-      "Everything — CBC, lipids, vitamins, liver, kidney, thyroid, and diabetes.",
+      "Includes CBC, lipid, vitamin, liver, kidney, thyroid, and diabetes markers.",
     markers: [
       "All CBC markers",
       "Full lipid panel",
@@ -305,14 +374,20 @@ const statusClass = (s: string) =>
 onMounted(async () => {
   try {
     orders.value = await api.getOrders();
-  } catch {
+  } catch (error) {
     orders.value = [];
+    orderError.value =
+      error instanceof Error
+        ? error.message
+        : "We couldn't load your orders. Please try again.";
   } finally {
     loading.value = false;
   }
 });
 
 const placeOrder = async (kit: any) => {
+  orderError.value = "";
+  orderSuccess.value = "";
   orderingId.value = kit.id;
   try {
     const res = await api.placeOrder({
@@ -321,13 +396,30 @@ const placeOrder = async (kit: any) => {
       price: kit.price,
     });
     orders.value.unshift(res);
+    orderSuccess.value = `Order confirmed. ${kit.name} has been added to Your orders.`;
+    await nextTick();
+    ordersSection.value?.scrollIntoView({ behavior: "auto", block: "start" });
+  } catch (error) {
+    orderError.value =
+      error instanceof Error
+        ? error.message
+        : "We couldn't place this order. Please try again.";
   } finally {
     orderingId.value = null;
   }
 };
 const cancelOrder = async (id: string) => {
-  await api.deleteOrder(id);
-  orders.value = orders.value.filter((o: any) => o.id !== id);
+  orderError.value = "";
+  orderSuccess.value = "";
+  try {
+    await api.deleteOrder(id);
+    orders.value = orders.value.filter((o: any) => o.id !== id);
+  } catch (error) {
+    orderError.value =
+      error instanceof Error
+        ? error.message
+        : "We couldn't cancel this order. Please try again.";
+  }
 };
 
 const resetKitForm = () => {

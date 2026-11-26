@@ -1,24 +1,11 @@
 <template>
   <div class="space-y-6">
-    <section
-      class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-700 p-6 text-white shadow-xl sm:p-8"
-    >
-      <div class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-inset ring-white/10"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Family health intelligence
-        </span>
-        <h3 class="mt-4 text-3xl font-bold sm:text-4xl">
-          Track hereditary conditions and health history across your family.
-        </h3>
-        <p class="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-          Add family members, list known conditions, and surface recurring risks
-          that may need preventive screening.
-        </p>
-      </div>
-    </section>
+    <PageHeading
+      :icon="IconUsersGroup"
+      title="Family health history"
+      description="Keep family conditions and relationships organized to support more informed conversations with your clinician."
+      eyebrow="Family health"
+    />
 
     <form
       @submit.prevent="addMember"
@@ -27,45 +14,69 @@
       <div class="flex items-center justify-between gap-3">
         <p class="text-base font-semibold text-slate-900">Add family member</p>
         <button
+          type="submit"
           :disabled="saving"
-          class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+          class="medivoy-primary-button inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {{ saving ? "Saving..." : "Add Member" }}
+          <IconPlus v-if="!saving" :size="17" aria-hidden="true" />
+          {{ saving ? "Saving..." : "Add member" }}
         </button>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3">
-        <input
-          v-model="form.name"
-          placeholder="Name"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        />
-        <select
-          v-model="form.relation"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        >
-          <option value="">Relation</option>
-          <option v-for="r in relations" :key="r" :value="r">{{ r }}</option>
-        </select>
-        <input
-          v-model="form.age"
-          type="number"
-          min="0"
-          placeholder="Age"
-          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-        />
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Name</span>
+          <input
+            v-model="form.name"
+            autocomplete="name"
+            placeholder="Family member's name"
+            required
+            class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700 focus:bg-white"
+          />
+        </label>
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Relationship</span>
+          <ProfessionalSelect
+            id="family-relationship"
+            v-model="form.relation"
+            :options="relations"
+            placeholder="Select relationship"
+            required
+          />
+        </label>
+        <label class="space-y-2 text-sm font-medium text-slate-700">
+          <span>Age</span>
+          <input
+            v-model="form.age"
+            type="number"
+            min="0"
+            inputmode="numeric"
+            placeholder="Age in years"
+            class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700 focus:bg-white"
+          />
+        </label>
       </div>
 
-      <input
-        v-model="form.conditions"
-        placeholder="Known conditions (e.g. Diabetes, Hypertension)"
-        class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
-      />
-      <p class="text-xs text-slate-400">
-        Separate conditions with commas. These will be used for hereditary risk
-        summaries.
-      </p>
+      <label class="block space-y-2 text-sm font-medium text-slate-700">
+        <span>Known conditions</span>
+        <input
+          v-model="form.conditions"
+          placeholder="For example, diabetes or hypertension"
+          class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-normal text-slate-900 outline-none transition focus:border-cyan-700 focus:bg-white"
+        />
+        <span class="block text-xs font-normal text-slate-500">
+          Separate conditions with commas.
+        </span>
+      </label>
     </form>
+
+    <p
+      v-if="actionError"
+      role="alert"
+      class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+    >
+      {{ actionError }}
+    </p>
 
     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div class="mb-4 flex items-center justify-between">
@@ -79,6 +90,20 @@
           :key="n"
           class="h-20 rounded-2xl bg-slate-100"
         ></div>
+      </div>
+
+      <div
+        v-else-if="loadError"
+        class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
+      >
+        <p role="alert">{{ loadError }}</p>
+        <button
+          type="button"
+          class="mt-3 font-semibold text-cyan-900 underline underline-offset-2"
+          @click="loadMembers"
+        >
+          Try again
+        </button>
       </div>
 
       <div v-else-if="members.length" class="space-y-3">
@@ -100,7 +125,7 @@
                   >{{ m.relation }}</span
                 >
               </div>
-              <p class="mt-1 text-xs text-slate-500">Age: {{ m.age || "—" }}</p>
+              <p class="mt-1 text-xs text-slate-500">Age: {{ m.age || "-" }}</p>
 
               <div class="mt-3 flex flex-wrap gap-2">
                 <span
@@ -118,10 +143,13 @@
             </div>
 
             <button
+              type="button"
               @click="removeMember(m.id)"
-              class="rounded-xl border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+              :disabled="removingId === m.id"
+              class="rounded-xl border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Remove
+              <IconTrash :size="15" class="mr-1 inline" aria-hidden="true" />
+              {{ removingId === m.id ? "Removing..." : "Remove" }}
             </button>
           </div>
         </article>
@@ -165,6 +193,11 @@
 </template>
 
 <script setup lang="ts">
+import IconPlus from "@tabler/icons-vue/icons/IconPlus";
+import IconTrash from "@tabler/icons-vue/icons/IconTrash";
+import IconUsersGroup from "@tabler/icons-vue/icons/IconUsersGroup";
+import { getApiErrorMessage } from "~/utils/apiError";
+
 const api = useMedivoyApi();
 const relations = [
   "Father",
@@ -182,6 +215,9 @@ const form = reactive({ name: "", relation: "", age: "", conditions: "" });
 const members = ref<any[]>([]);
 const loading = ref(true);
 const saving = ref(false);
+const removingId = ref<string | number | null>(null);
+const loadError = ref("");
+const actionError = ref("");
 
 const splitConditions = (c: string) =>
   c
@@ -191,34 +227,62 @@ const splitConditions = (c: string) =>
         .filter(Boolean)
     : [];
 
-onMounted(async () => {
+const loadMembers = async () => {
+  loading.value = true;
+  loadError.value = "";
   try {
     members.value = await api.getFamilyMembers();
-  } catch {
+  } catch (error) {
     members.value = [];
+    loadError.value = getApiErrorMessage(
+      error,
+      "We couldn't load family members. Please try again.",
+    );
   } finally {
     loading.value = false;
   }
-});
+};
+
+onMounted(loadMembers);
 
 const addMember = async () => {
-  if (!form.name) return;
+  if (!form.name.trim() || !form.relation) return;
+  actionError.value = "";
   saving.value = true;
   try {
-    const res = await api.addFamilyMember({ ...form });
+    const res = await api.addFamilyMember({
+      ...form,
+      name: form.name.trim(),
+    });
     members.value.push(res);
     form.name = "";
     form.relation = "";
     form.age = "";
     form.conditions = "";
+  } catch (error) {
+    actionError.value = getApiErrorMessage(
+      error,
+      "We couldn't save this family member. Please try again.",
+    );
   } finally {
     saving.value = false;
   }
 };
 
 const removeMember = async (id: string) => {
-  await api.deleteFamilyMember(id);
-  members.value = members.value.filter((m: any) => m.id !== id);
+  actionError.value = "";
+  removingId.value = id;
+  try {
+    await api.deleteFamilyMember(id);
+    members.value = members.value.filter((m: any) => m.id !== id);
+  } catch (error) {
+    actionError.value = getApiErrorMessage(
+      error,
+      "We couldn't remove this family member. Please try again.",
+    );
+  } finally {
+    removingId.value = null;
+  }
 };
 
 const riskConditions = computed(() => {

@@ -2,20 +2,18 @@
   <div class="pharmacy-page">
     <!-- Disclaimer Banner -->
     <div class="disclaimer-banner">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
+      <IconAlertCircle :size="20" :stroke-width="1.8" aria-hidden="true" />
       <div>
         <strong>Medical Disclaimer:</strong> The medicine and supplement information shown on this page is for informational purposes only. Always consult a qualified doctor or pharmacist before purchasing or taking any medication. Do not self-diagnose or self-medicate.
       </div>
     </div>
 
-    <!-- Pharmacy Header -->
-    <div class="pharmacy-header">
-      <h1 class="page-title">Pharmacy</h1>
-      <p class="page-subtitle">Search medicines, find doctors, and order from nearby pharmacies</p>
-    </div>
+    <PageHeading
+      :icon="IconPill"
+      title="Pharmacy"
+      description="Search medicines and find doctors. Always check medication choices with a qualified professional."
+      eyebrow="Care and medication"
+    />
 
     <!-- Suggested for You (from latest AI report analysis, live pharmacy data) -->
     <section v-if="suggestions?.medicineSuggestions?.length || suggestions?.doctorSuggestions?.length" class="card suggestions-card">
@@ -25,7 +23,10 @@
       <div v-if="suggestions.medicineSuggestions?.length" class="med-suggestions-list">
         <div v-for="(med, idx) in suggestions.medicineSuggestions" :key="idx" class="med-suggestion-item" :class="'med-type-' + med.type">
           <div class="med-suggestion-header">
-            <span class="med-suggestion-type">{{ med.type === 'medicine' ? '💊' : med.type === 'vitamin' ? '💊' : '🌿' }} {{ med.type }}</span>
+            <span class="med-suggestion-type">
+              <component :is="medicineIcon(med.type)" :size="15" aria-hidden="true" />
+              {{ med.type }}
+            </span>
             <span v-if="med.live?.isPrescriptionRequired ?? med.isPrescriptionRequired" class="rx-badge">Rx</span>
           </div>
           <h3 class="med-name">{{ med.live?.brandName || med.name }}</h3>
@@ -63,19 +64,16 @@
     <!-- Search -->
     <div class="search-section">
       <div class="search-bar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-        </svg>
+        <IconSearch :size="18" :stroke-width="1.8" aria-hidden="true" />
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search for medicines, vitamins, or supplements..."
+          aria-label="Search medicines, vitamins, or supplements"
+          :placeholder="animatedSearchPlaceholder"
           @input="onSearch"
         />
-        <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''; results = [];">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
+        <button v-if="searchQuery" type="button" class="clear-btn" aria-label="Clear search" @click="clearSearch">
+          <IconX :size="16" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -84,6 +82,12 @@
     <div v-if="searching" class="loading-section">
       <div class="loading-spinner"></div>
       <p>Searching medicines...</p>
+    </div>
+
+    <div v-else-if="searchError" class="empty-state" role="alert">
+      <IconAlertCircle :size="42" :stroke-width="1.4" aria-hidden="true" />
+      <h3>Search unavailable</h3>
+      <p>{{ searchError }}</p>
     </div>
 
     <!-- Results -->
@@ -115,9 +119,7 @@
 
     <!-- Empty state -->
     <div v-else-if="searchQuery && !searching" class="empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5">
-        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-      </svg>
+      <IconSearch :size="42" :stroke-width="1.4" aria-hidden="true" />
       <h3>No medicines found</h3>
       <p>Try a different search term or check the spelling.</p>
     </div>
@@ -127,10 +129,10 @@
       <section class="card">
         <h2 class="card-title">Browse Categories</h2>
         <div class="category-grid">
-          <div v-for="cat in categories" :key="cat.name" class="category-chip" @click="searchQuery = cat.name; onSearch()">
-            <span class="cat-icon">{{ cat.icon }}</span>
+          <button v-for="cat in categories" :key="cat.name" type="button" class="category-chip" @click="searchQuery = cat.name; onSearch()">
+            <component :is="cat.icon" class="cat-icon" :size="17" :stroke-width="1.8" aria-hidden="true" />
             <span>{{ cat.name }}</span>
-          </div>
+          </button>
         </div>
       </section>
 
@@ -138,10 +140,16 @@
         <h2 class="card-title">Find a Doctor</h2>
         <p class="card-desc">Search for doctors by specialty to book a consultation.</p>
         <div class="doctor-specialties">
-          <button v-for="spec in specialties" :key="spec" class="specialty-btn" @click="searchDoctors(spec)">
+          <button v-for="spec in specialties" :key="spec" type="button" class="specialty-btn" :disabled="searchingDoctors" @click="searchDoctors(spec)">
             {{ spec }}
           </button>
         </div>
+        <p v-if="doctorsError" role="alert" class="mb-3 text-sm text-rose-700">
+          {{ doctorsError }}
+        </p>
+        <p v-if="searchingDoctors" role="status" class="mb-3 text-sm text-slate-500">
+          Searching doctors...
+        </p>
         <div v-if="doctors.length" class="doctor-list">
           <div v-for="doc in doctors" :key="doc.doctorId || doc.id" class="doctor-card">
             <div class="doc-avatar">{{ (doc.name || 'Dr. ')[0] }}</div>
@@ -158,13 +166,33 @@
 </template>
 
 <script setup lang="ts">
+import IconActivityHeartbeat from "@tabler/icons-vue/icons/IconActivityHeartbeat";
+import IconAlertCircle from "@tabler/icons-vue/icons/IconAlertCircle";
+import IconHeartRateMonitor from "@tabler/icons-vue/icons/IconHeartRateMonitor";
+import IconLeaf from "@tabler/icons-vue/icons/IconLeaf";
+import IconPill from "@tabler/icons-vue/icons/IconPill";
+import IconSearch from "@tabler/icons-vue/icons/IconSearch";
+import IconSun from "@tabler/icons-vue/icons/IconSun";
+import IconX from "@tabler/icons-vue/icons/IconX";
+import type { Component } from "vue";
+import { getApiErrorMessage } from "~/utils/apiError";
+
 const api = useMedivoyApi()
 const searchQuery = ref('')
+const animatedSearchPlaceholder = useAnimatedPlaceholder([
+  "Search medicines",
+  "Search vitamins",
+  "Search supplements",
+])
 const results = ref<any[]>([])
 const searching = ref(false)
 const doctors = ref<any[]>([])
+const searchingDoctors = ref(false)
+const doctorsError = ref("")
+const searchError = ref("")
 const suggestions = ref<any>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let searchRequestId = 0
 
 onMounted(async () => {
   try {
@@ -175,13 +203,16 @@ onMounted(async () => {
 })
 
 const categories = [
-  { name: 'Paracetamol', icon: '💊' },
-  { name: 'Vitamins', icon: '💊' },
-  { name: 'Antibiotics', icon: '💊' },
-  { name: 'Blood Pressure', icon: '❤️' },
-  { name: 'Diabetes', icon: '🩸' },
-  { name: 'Supplements', icon: '💊' },
+  { name: 'Paracetamol', icon: IconPill },
+  { name: 'Vitamins', icon: IconSun },
+  { name: 'Antibiotics', icon: IconPill },
+  { name: 'Blood Pressure', icon: IconHeartRateMonitor },
+  { name: 'Diabetes', icon: IconActivityHeartbeat },
+  { name: 'Supplements', icon: IconLeaf },
 ]
+
+const medicineIcon = (type?: string): Component =>
+  type?.toLowerCase() === 'supplement' ? IconLeaf : IconPill
 
 const specialties = [
   'General Physician',
@@ -196,87 +227,123 @@ const specialties = [
 
 async function onSearch() {
   if (debounceTimer) clearTimeout(debounceTimer)
-  if (!searchQuery.value || searchQuery.value.length < 2) {
+  debounceTimer = null
+  const query = searchQuery.value.trim()
+  const requestId = ++searchRequestId
+  searchError.value = ""
+
+  if (query.length < 2) {
     results.value = []
+    searching.value = false
     return
   }
 
   searching.value = true
   debounceTimer = setTimeout(async () => {
+    debounceTimer = null
     try {
-      const data = await api.searchMedicines(searchQuery.value)
-      results.value = data.medicines || []
-    } catch {
-      results.value = []
+      const data = await api.searchMedicines(query)
+      if (requestId === searchRequestId) {
+        results.value = data.medicines || []
+      }
+    } catch (error) {
+      if (requestId === searchRequestId) {
+        results.value = []
+        searchError.value = getApiErrorMessage(
+          error,
+          "We couldn't search medicines. Please try again.",
+        )
+      }
     } finally {
-      searching.value = false
+      if (requestId === searchRequestId) searching.value = false
     }
   }, 400)
 }
 
+function clearSearch() {
+  searchRequestId += 1
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = null
+  searchQuery.value = ""
+  results.value = []
+  searchError.value = ""
+  searching.value = false
+}
+
 async function searchDoctors(specialty: string) {
+  searchingDoctors.value = true
+  doctorsError.value = ""
   try {
     const data = await api.getDoctors(specialty)
     doctors.value = data.data || data.doctors || []
-  } catch {
+  } catch (error) {
     doctors.value = []
+    doctorsError.value = getApiErrorMessage(
+      error,
+      "We couldn't search doctors. Please try again.",
+    )
+  } finally {
+    searchingDoctors.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  searchRequestId += 1
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>
 .pharmacy-page {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 2rem;
 }
 
 .disclaimer-banner {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 0.75rem;
+  background: #eff8fb;
+  border: 1px solid #c8e6ed;
+  border-radius: 1rem;
   padding: 1rem;
-  margin-bottom: 1.5rem;
   font-size: 0.8125rem;
-  color: #92400e;
+  color: #24566a;
   line-height: 1.5;
 }
 .disclaimer-banner svg {
   flex-shrink: 0;
   margin-top: 2px;
-}
-
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #111827;
-  margin: 0 0 0.25rem;
-}
-.page-subtitle {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
+  color: #0e7490;
 }
 
 .search-section {
-  margin: 1.25rem 0;
+  margin: 0;
 }
 .search-bar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  transition: border-color 0.15s;
+  border: 1px solid #d8e2eb;
+  border-radius: 1rem;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 10px 24px rgb(15 42 67 / 0.035);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.search-bar > svg {
+  flex-shrink: 0;
+  color: #71869a;
 }
 .search-bar:focus-within {
-  border-color: #01696f;
-  box-shadow: 0 0 0 3px rgba(1, 105, 111, 0.1);
+  border-color: #0e7490;
+  box-shadow: 0 0 0 3px rgb(14 116 144 / 0.12);
 }
 .search-bar input {
   flex: 1;
@@ -294,8 +361,11 @@ async function searchDoctors(specialty: string) {
   border: none;
   color: #9ca3af;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.625rem;
 }
 .clear-btn:hover {
   color: #374151;
@@ -321,18 +391,23 @@ async function searchDoctors(specialty: string) {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
 .medicine-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
   padding: 1.25rem;
-  transition: box-shadow 0.15s;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 .medicine-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  border-color: #c6dce4;
+  box-shadow: 0 14px 28px rgb(15 42 67 / 0.08);
 }
 .med-header {
   display: flex;
@@ -444,21 +519,26 @@ async function searchDoctors(specialty: string) {
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #374151;
-  background: #f9fafb;
+  color: #38536a;
+  background: #fff;
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    background-color 180ms ease;
 }
 .category-chip:hover {
-  border-color: #01696f;
-  color: #01696f;
-  background: #f0fdfa;
+  transform: translateY(-1px);
+  border-color: #b7dbe3;
+  color: #0e6178;
+  background: #f0f9fb;
 }
-.cat-icon { font-size: 1rem; }
+.cat-icon { flex-shrink: 0; color: #0e7490; }
 
 .suggestions-card {
   border-color: #dbeafe;
@@ -566,7 +646,7 @@ async function searchDoctors(specialty: string) {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #01696f, #0c4e54);
+  background: linear-gradient(135deg, #0e7490, #155e75);
   color: #fff;
   display: flex;
   align-items: center;
@@ -591,5 +671,30 @@ async function searchDoctors(specialty: string) {
   font-size: 0.75rem;
   color: #9ca3af;
   margin: 0;
+}
+
+@media (max-width: 640px) {
+  .category-chip,
+  .specialty-btn {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-bar,
+  .medicine-card,
+  .category-chip,
+  .specialty-btn {
+    transition: none;
+  }
+
+  .medicine-card:hover,
+  .category-chip:hover {
+    transform: none;
+  }
+
+  .loading-spinner {
+    animation: none;
+  }
 }
 </style>

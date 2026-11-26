@@ -1,6 +1,566 @@
 @import "tailwindcss";
-html { scroll-behavior: smooth; }
-body { margin: 0; min-height: 100vh; background: #f8fafc; color: #0f172a; font-family: Inter, system-ui, sans-serif; }
-* { box-sizing: border-box; }
-a { color: inherit; text-decoration: none; }
-input, button, select, textarea { font: inherit; }
+@import "aos/dist/aos.css";
+
+:root {
+  color-scheme: light;
+
+  /* --- brand ink / surfaces (unchanged, kept for back-compat) --- */
+  --medivoy-ink: #102a43;
+  --medivoy-muted: #526579;
+  --medivoy-accent: #0e7490;
+  --medivoy-surface: #ffffff;
+  --medivoy-border: #e2e8f0;
+
+  /* --- extended tokens --- */
+  --medivoy-ink-faint: #94a3b8;
+  --medivoy-bg: #f1f7f9;
+  --medivoy-accent-soft: #e0f2f4;
+  --medivoy-accent-strong: #0b5a6c;
+
+  /* dark surfaces, for sidebar / hero sections */
+  --medivoy-navy-900: #0a1726;
+  --medivoy-navy-800: #112338;
+
+  /* semantic status colors (risk/score cards, badges, alerts) */
+  --medivoy-success: #15803d;
+  --medivoy-success-soft: #e8f7ee;
+  --medivoy-warning: #b45309;
+  --medivoy-warning-soft: #fef3e2;
+  --medivoy-danger: #be123c;
+  --medivoy-danger-soft: #fde8ef;
+  --medivoy-info: #4338ca;
+  --medivoy-info-soft: #eef0fd;
+
+  /* scale */
+  --medivoy-radius-sm: 10px;
+  --medivoy-radius-md: 14px;
+  --medivoy-radius-lg: 20px;
+  --medivoy-shadow-sm: 0 1px 2px rgb(16 20 35 / 0.04);
+  --medivoy-shadow-md: 0 1px 2px rgb(16 20 35 / 0.04), 0 10px 24px -14px rgb(16 20 35 / 0.14);
+  --medivoy-shadow-lg: 0 18px 32px -16px rgb(16 20 35 / 0.2);
+
+  /* motion */
+  --medivoy-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--medivoy-bg);
+  color: var(--medivoy-ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.medivoy-page-background {
+  background-color: var(--medivoy-bg);
+  background-image:
+    radial-gradient(
+      ellipse at 12% 0%,
+      rgb(14 116 144 / 0.08),
+      transparent 40rem
+    ),
+    linear-gradient(145deg, #f1f7f9 0%, #f8fbfc 56%, #edf6f7 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+.medivoy-primary-button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--medivoy-accent);
+  border-radius: 0.875rem;
+  background: var(--medivoy-accent);
+  padding: 0.75rem 1.25rem;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-decoration: none;
+  box-shadow: 0 8px 18px -12px rgb(14 116 144 / 0.65);
+  transition:
+    transform 160ms var(--medivoy-ease),
+    box-shadow 160ms var(--medivoy-ease),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.medivoy-primary-button:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--medivoy-accent-strong);
+  background: var(--medivoy-accent-strong);
+  box-shadow: 0 10px 20px -12px rgb(14 116 144 / 0.55);
+}
+
+.medivoy-primary-button:focus-visible {
+  outline: 2px solid var(--medivoy-accent);
+  outline-offset: 3px;
+}
+
+.medivoy-primary-button:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.98);
+}
+
+.medivoy-primary-button:disabled,
+.medivoy-primary-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  background: #cbd5e1;
+  color: #475569;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.medivoy-title-underline::after {
+  display: block;
+  width: 2.75rem;
+  height: 3px;
+  margin-top: 0.65rem;
+  border-radius: 9999px;
+  background: var(--medivoy-accent);
+  content: "";
+  transform-origin: left center;
+}
+
+@keyframes medivoy-title-underline-enter {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .medivoy-title-underline::after {
+    animation: medivoy-title-underline-enter 420ms 120ms var(--medivoy-ease) backwards;
+    transition: transform 180ms var(--medivoy-ease);
+  }
+
+  .medivoy-title-underline:hover::after {
+    transform: scaleX(1.35);
+  }
+}
+
+.professional-select {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.65rem 0.875rem;
+  color: #0f172a;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.professional-select:hover {
+  border-color: #94a3b8;
+  background: #fff;
+}
+
+.professional-select:focus-visible,
+.professional-select--open {
+  border-color: var(--medivoy-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(14 116 144 / 0.13);
+  outline: none;
+}
+
+.professional-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.professional-select-menu {
+  position: fixed;
+  z-index: 20;
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid #dbe3ea;
+  border-radius: 0.875rem;
+  background: #fff;
+  padding: 0.375rem;
+  box-shadow: 0 16px 36px -18px rgb(15 23 42 / 0.28);
+}
+
+.professional-select-option {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: transparent;
+  padding: 0.625rem 0.75rem;
+  color: #334155;
+  text-align: left;
+  font-size: 0.875rem;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.professional-select-option:hover,
+.professional-select-option--active {
+  background: #edf7f8;
+  color: #0e5c70;
+}
+
+.select-menu-enter-active,
+.select-menu-leave-active {
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.select-menu-enter-from,
+.select-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.professional-checkbox {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.professional-checkbox input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.professional-checkbox__box {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border: 1.5px solid #94a3b8;
+  border-radius: 5px;
+  background: #fff;
+  color: transparent;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.professional-checkbox input:checked + .professional-checkbox__box {
+  border-color: var(--medivoy-accent);
+  background: var(--medivoy-accent);
+  color: #fff;
+}
+
+.professional-checkbox input:focus-visible + .professional-checkbox__box {
+  border-color: var(--medivoy-accent);
+  box-shadow: 0 0 0 3px rgb(14 116 144 / 0.15);
+}
+
+.professional-checkbox:active .professional-checkbox__box {
+  transform: scale(0.94);
+}
+
+.professional-checkbox__label {
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.professional-checkbox--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button:not(:disabled),
+a[href],
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--medivoy-accent);
+  outline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Fast route transitions                                            */
+/* ---------------------------------------------------------------- */
+
+.route-enter-active {
+  transition: opacity 120ms var(--medivoy-ease);
+}
+
+.route-leave-active {
+  transition: opacity 70ms ease-in;
+}
+
+.route-enter-from,
+.route-leave-to {
+  opacity: 0;
+}
+
+@keyframes medivoy-page-heading-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-heading-enter {
+    animation: medivoy-page-heading-enter 360ms var(--medivoy-ease) both;
+  }
+}
+
+body [data-aos="fade-up"] {
+  transform: translate3d(0, 12px, 0);
+}
+
+body [data-aos^="fade"][data-aos^="fade"].aos-animate {
+  transform: translate3d(0, 0, 0);
+}
+
+/* ---------------------------------------------------------------- */
+/* NEW: reusable entrance animation utilities                        */
+/* Drop straight onto any element: class="fade-up d2"                */
+/* ---------------------------------------------------------------- */
+
+@keyframes medivoy-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  opacity: 0;
+  animation: medivoy-fade-up 280ms var(--medivoy-ease) forwards;
+}
+
+/* stagger helpers for lists of cards */
+.d1 { animation-delay: 0.02s; }
+.d2 { animation-delay: 0.05s; }
+.d3 { animation-delay: 0.08s; }
+.d4 { animation-delay: 0.11s; }
+.d5 { animation-delay: 0.14s; }
+.d6 { animation-delay: 0.17s; }
+
+@keyframes medivoy-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(14 116 144 / 0.55); }
+  70% { box-shadow: 0 0 0 7px rgb(14 116 144 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(14 116 144 / 0); }
+}
+
+/* small live-status dot, e.g. "AI Preventive Health Screening" pill */
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--medivoy-accent);
+  animation: medivoy-pulse-ring 2s infinite;
+}
+
+/* ---------------------------------------------------------------- */
+/* NEW: lift — generic hover-lift for ANY card, not just the         */
+/* specific class combinations below                                 */
+/* ---------------------------------------------------------------- */
+
+.lift {
+  transition:
+    transform 180ms var(--medivoy-ease),
+    box-shadow 180ms var(--medivoy-ease),
+    border-color 180ms var(--medivoy-ease);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--medivoy-shadow-lg);
+    border-color: #cfe4e9;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* NEW: status badge helpers — use on an icon chip, e.g.              */
+/* <div class="badge badge-warning"><svg .../></div>                  */
+/* ---------------------------------------------------------------- */
+
+.badge {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--medivoy-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge svg { width: 16px; height: 16px; }
+
+.badge-success { background: var(--medivoy-success-soft); color: var(--medivoy-success); }
+.badge-warning { background: var(--medivoy-warning-soft); color: var(--medivoy-warning); }
+.badge-danger  { background: var(--medivoy-danger-soft);  color: var(--medivoy-danger); }
+.badge-info    { background: var(--medivoy-info-soft);    color: var(--medivoy-info); }
+.badge-accent  { background: var(--medivoy-accent-soft);  color: var(--medivoy-accent-strong); }
+
+/* ---------------------------------------------------------------- */
+/* Existing interactive element styling (unchanged)                  */
+/* ---------------------------------------------------------------- */
+
+a[href][class*="rounded-"],
+button:not(:disabled)[class*="rounded-"] {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+a[href][class*="rounded-"]:active,
+button:not(:disabled)[class*="rounded-"]:active {
+  transform: scale(0.985);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  a[href][class*="rounded-"]:hover,
+  button:not(:disabled)[class*="rounded-"]:hover {
+    transform: translateY(-1px);
+  }
+}
+
+main :is(input, select, textarea) {
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+main :is(input, select, textarea):hover:not(:disabled):not(:focus-visible) {
+  border-color: #94a3b8;
+}
+
+main :is(input, select, textarea):focus-visible {
+  border-color: var(--medivoy-accent);
+  box-shadow: 0 0 0 3px rgb(14 116 144 / 0.13);
+}
+
+main :is(article, .card, .medicine-card, .doctor-card):not(.lift),
+main [class~="rounded-3xl"][class~="bg-white"]:not(.lift),
+main [class~="rounded-2xl"][class~="bg-white"][class~="p-5"]:not(form):not(.lift),
+main [class~="rounded-2xl"][class~="bg-white"][class~="p-6"]:not(form):not(.lift) {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+main tbody tr {
+  transition: background-color 140ms ease;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  main :is(article, .card, .medicine-card, .doctor-card):not(.lift):hover,
+  main [class~="rounded-3xl"][class~="bg-white"]:not(.lift):hover,
+  main [class~="rounded-2xl"][class~="bg-white"][class~="p-5"]:not(form):not(.lift):hover,
+  main [class~="rounded-2xl"][class~="bg-white"][class~="p-6"]:not(form):not(.lift):hover {
+    transform: translateY(-2px);
+    border-color: #cfe4e9;
+    box-shadow: 0 14px 28px -26px rgb(14 116 144 / 0.5);
+  }
+
+  main tbody tr:hover {
+    background-color: #f8fbfd;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Reduced motion — extended to cover the new utilities too          */
+/* ---------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-aos] {
+    opacity: 1;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .fade-up {
+    opacity: 1;
+    transform: none !important;
+  }
+
+  .pulse-dot {
+    animation: none;
+  }
+
+  a[href][class*="rounded-"]:active,
+  button:not(:disabled)[class*="rounded-"]:active {
+    transform: none;
+  }
+}

@@ -1,103 +1,182 @@
 <template>
   <div class="space-y-8">
-    <section
-      class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 text-white shadow-xl"
+    <PageHeading
+      :icon="IconActivityHeartbeat"
+      title="Your health, clearly in view."
+      description="Bring reports, family history, and wellness guidance together in one place."
+      eyebrow="Health overview"
     >
-      <div
-        class="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl"
-      ></div>
-      <div
-        class="absolute -bottom-10 right-32 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl"
-      ></div>
-      <div
-        class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"
-      >
-        <div class="max-w-2xl">
-          <span
-            class="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300"
-          >
-            <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
-            AI Preventive Health Screening
-          </span>
-          <h2 class="mt-4 text-3xl font-bold leading-snug sm:text-4xl">
-            Know your health<br class="hidden sm:block" />
-            for the next 5 years
-          </h2>
-          <p class="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-            Upload your blood, DNA, or scan reports. Medivoy extracts markers,
-            calculates your risk score, bio age, family risk, nutrition gaps,
-            and longevity guidance — powered by AI.
-          </p>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <NuxtLink
-              to="/reports/upload"
-              class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900! transition hover:bg-slate-100"
-              >Upload report</NuxtLink
-            >
-            <NuxtLink
-              to="/reports"
-              class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
-              >View all reports</NuxtLink
-            >
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 min-w-[260px]">
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-xs text-slate-400">AI Reports</p>
-            <p class="mt-2 text-2xl font-bold text-cyan-400">OCR + AI</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-xs text-slate-400">DNA Analysis</p>
-            <p class="mt-2 text-2xl font-bold text-violet-400">Genetic</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-xs text-slate-400">Bio Age</p>
-            <p class="mt-2 text-2xl font-bold text-amber-400">Longevity</p>
-          </div>
-          <div
-            class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur"
-          >
-            <p class="text-xs text-slate-400">Family Risk</p>
-            <p class="mt-2 text-2xl font-bold text-emerald-400">Hereditary</p>
-          </div>
-        </div>
-      </div>
-    </section>
+      <template #actions>
+        <NuxtLink
+          to="/reports/upload"
+          class="medivoy-primary-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-800 bg-cyan-800 px-4 py-2.5 text-sm font-semibold text-white! shadow-[0_8px_18px_-12px_rgba(14,116,144,0.55)] transition hover:border-cyan-900 hover:bg-cyan-900 active:scale-[0.98]"
+        >
+          <IconUpload :size="18" aria-hidden="true" />
+          Upload a report
+        </NuxtLink>
+        <NuxtLink
+          to="/reports"
+          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_6px_16px_-14px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:bg-cyan-50 active:scale-[0.98]"
+        >
+          <IconFiles :size="18" aria-hidden="true" />
+          Browse reports
+        </NuxtLink>
+      </template>
+    </PageHeading>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_1fr]">
       <div
-        v-for="stat in stats"
+        v-for="(stat, index) in stats"
         :key="stat.label"
-        class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        class="lift fade-up flex flex-col rounded-2xl border p-5 shadow-sm"
+        :class="[
+          stat.highlight
+            ? 'border-cyan-200 bg-[linear-gradient(145deg,#ffffff_0%,#ecfeff_100%)] shadow-[0_12px_30px_-24px_rgba(14,116,144,0.5)]'
+            : 'border-slate-200 bg-white',
+          delayClass(index),
+        ]"
       >
         <div class="flex items-center justify-between">
           <p class="text-sm text-slate-500">{{ stat.label }}</p>
           <div
             class="flex h-9 w-9 items-center justify-center rounded-xl"
-            :class="stat.iconBg"
+            :class="[stat.iconBg, stat.iconColor]"
           >
-            <span>{{ stat.icon }}</span>
+            <component :is="stat.icon" :size="19" :stroke-width="1.8" aria-hidden="true" />
           </div>
         </div>
         <p
-          class="mt-3 text-3xl font-bold text-slate-900"
+          v-if="stat.highlight && healthScore !== null && !loadingReports && !reportsError"
+          class="mt-3 flex items-baseline gap-1.5 font-bold tracking-tight text-cyan-950"
+        >
+          <span class="text-5xl leading-none">{{ healthScore }}</span>
+          <span class="text-sm font-semibold text-slate-500">/ 100</span>
+        </p>
+        <p
+          v-else
+          class="mt-3 text-3xl font-bold tracking-tight text-slate-900"
           :class="stat.valueColor"
         >
           {{ stat.value }}
         </p>
-        <p class="mt-1 text-xs" :class="stat.changeColor">{{ stat.change }}</p>
+        <div
+          v-if="stat.highlight && healthScore !== null && !loadingReports && !reportsError"
+          class="mt-3"
+        >
+          <div
+            class="health-score-track"
+            role="meter"
+            :aria-label="isScoreFromReport ? 'AI wellness score' : 'Health score'"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="healthScore"
+          >
+            <div
+              class="health-score-fill"
+              :style="{ width: `${healthScore}%` }"
+            ></div>
+          </div>
+          <p class="mt-2 text-xs font-medium leading-5 text-cyan-900">
+            {{ isScoreFromReport
+              ? "AI-generated estimate, not a clinical measurement."
+              : "From your saved profile, not a clinical measurement." }}
+          </p>
+        </div>
+        <p class="mt-auto pt-2 text-xs font-medium leading-5" :class="stat.changeColor">
+          {{ stat.change }}
+        </p>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-activity lift fade-up rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      aria-labelledby="report-activity-title"
+    >
+      <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <h2 id="report-activity-title" class="font-bold text-slate-900">
+          Report activity
+          <span class="mt-0.5 block text-xs font-normal text-slate-500">
+            Monthly uploads over the last six months
+          </span>
+        </h2>
+        <span
+          v-if="reportActivity.hasData"
+          class="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-900"
+        >
+          {{ reportActivity.totalUploads }}
+          {{ reportActivity.totalUploads === 1 ? "upload" : "uploads" }}
+        </span>
+      </div>
+
+      <div
+        v-if="loadingReports"
+        class="grid h-32 grid-cols-6 items-end gap-3"
+        role="status"
+        aria-label="Loading report activity"
+      >
+        <div
+          v-for="month in 6"
+          :key="month"
+          class="h-16 animate-pulse rounded-t-lg bg-cyan-50"
+        ></div>
+      </div>
+      <p v-else-if="reportsError" role="status" class="text-sm text-slate-500">
+        Report activity is unavailable right now.
+      </p>
+      <div
+        v-else-if="reportActivity.hasData"
+        class="grid grid-cols-6 gap-3"
+        role="img"
+        :aria-label="`Report uploads by month: ${reportActivity.description}`"
+      >
+        <div
+          v-for="(month, index) in reportActivity.buckets"
+          :key="`${month.year}-${month.monthIndex}`"
+          class="flex min-w-0 flex-col items-center gap-2"
+        >
+          <div class="report-activity-track w-full">
+            <div
+              v-if="month.count"
+              class="report-activity-bar"
+              :style="{
+                height: `${month.height}%`,
+                animationDelay: `${index * 35}ms`,
+              }"
+              :title="`${month.count} ${month.count === 1 ? 'report' : 'reports'} in ${month.label}`"
+            ></div>
+          </div>
+          <span class="text-[11px] font-medium text-slate-500">
+            {{ month.label }}
+          </span>
+          <span class="text-xs font-semibold text-slate-700">
+            {{ month.count }}
+          </span>
+        </div>
+      </div>
+      <div v-else class="dashboard-activity-empty flex flex-col items-center gap-3 rounded-2xl border border-dashed border-cyan-200 bg-cyan-50/50 px-4 py-6 text-center sm:flex-row sm:text-left">
+        <span class="dashboard-activity-empty__icon grid size-11 shrink-0 place-items-center rounded-xl bg-white text-cyan-700 ring-1 ring-cyan-100">
+          <IconFiles :size="21" stroke-width="1.8" aria-hidden="true" />
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-slate-800">
+            No recent uploads
+          </p>
+          <p class="mt-0.5 text-xs text-slate-500">
+            Your report history will appear here after you upload a report.
+          </p>
+        </div>
+        <NuxtLink
+          to="/reports/upload"
+          class="inline-flex min-h-10 items-center justify-center rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-100"
+        >
+          Upload report
+        </NuxtLink>
       </div>
     </section>
 
     <section class="grid gap-6 lg:grid-cols-3">
       <div
-        class="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        class="lift fade-up d5 lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <div class="flex items-center justify-between mb-5">
           <div>
@@ -108,7 +187,7 @@
           </div>
           <NuxtLink
             to="/reports"
-            class="text-xs font-semibold text-blue-600 hover:underline"
+            class="text-xs font-semibold text-cyan-700 hover:text-cyan-900 hover:underline"
             >View all</NuxtLink
           >
         </div>
@@ -122,12 +201,26 @@
             <div class="mt-2 h-3 w-1/4 rounded bg-slate-100"></div>
           </div>
         </div>
+        <div
+          v-else-if="reportsError"
+          class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center"
+        >
+          <p role="alert" class="text-sm text-rose-800">{{ reportsError }}</p>
+          <button
+            type="button"
+            class="mt-3 font-semibold text-cyan-900 underline underline-offset-2"
+            @click="loadReports"
+          >
+            Try again
+          </button>
+        </div>
         <div v-else-if="reports.length" class="space-y-3">
           <NuxtLink
-            v-for="report in reports.slice(0, 4)"
+            v-for="(report, index) in reports.slice(0, 4)"
             :key="report.id"
             :to="`/reports/${report.id}`"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 p-4 hover:bg-slate-50"
+            class="fade-up flex items-center justify-between rounded-2xl border border-slate-100 p-4 transition hover:border-cyan-100 hover:bg-cyan-50/40"
+            :class="delayClass(index)"
           >
             <div class="min-w-0">
               <div class="flex items-center gap-2">
@@ -146,37 +239,39 @@
               </p>
             </div>
             <div class="ml-4 shrink-0 text-right">
-              <p class="text-xs text-slate-400">Risk</p>
-              <p class="text-lg font-bold" :class="riskClass(report.riskScore)">
-                {{ report.riskScore ?? "-" }}
+              <p class="text-xs text-slate-400">Health</p>
+              <p class="text-lg font-bold text-slate-900">
+                {{ scoreFromReport(report) ?? "Not reported" }}
               </p>
             </div>
           </NuxtLink>
         </div>
-        <div v-else class="rounded-2xl bg-slate-50 p-8 text-center">
+        <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
+          <IconFiles :size="24" stroke-width="1.5" class="mx-auto mb-2 text-slate-300" aria-hidden="true" />
           <p class="text-slate-500 text-sm">No reports uploaded yet.</p>
           <NuxtLink
             to="/reports/upload"
-            class="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline"
+            class="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-cyan-700 hover:underline"
             >Upload your first report →</NuxtLink
           >
         </div>
       </div>
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="lift fade-up d6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h4 class="font-bold text-slate-900 mb-1">Quick Actions</h4>
         <p class="text-xs text-slate-500 mb-5">Start your health journey</p>
         <div class="space-y-3">
           <NuxtLink
-            v-for="action in quickActions"
+            v-for="(action, index) in quickActions"
             :key="action.label"
             :to="action.to"
-            class="flex items-center gap-4 rounded-2xl border border-slate-100 p-4 hover:bg-slate-50"
+            class="fade-up flex items-center gap-4 rounded-2xl border border-slate-100 p-4 transition hover:border-cyan-100 hover:bg-cyan-50/40"
+            :class="delayClass(index)"
           >
             <div
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-              :class="action.iconBg"
+              :class="[action.iconBg, action.iconColor]"
             >
-              {{ action.icon }}
+              <component :is="action.icon" :size="20" :stroke-width="1.8" aria-hidden="true" />
             </div>
             <div>
               <p class="text-sm font-semibold text-slate-900">
@@ -192,79 +287,207 @@
 </template>
 
 <script setup lang="ts">
+import IconActivityHeartbeat from "@tabler/icons-vue/icons/IconActivityHeartbeat";
+import IconAlertTriangle from "@tabler/icons-vue/icons/IconAlertTriangle";
+import IconDna from "@tabler/icons-vue/icons/IconDna";
+import IconFiles from "@tabler/icons-vue/icons/IconFiles";
+import IconFileUpload from "@tabler/icons-vue/icons/IconFileUpload";
+import IconHeartRateMonitor from "@tabler/icons-vue/icons/IconHeartRateMonitor";
+import IconSalad from "@tabler/icons-vue/icons/IconSalad";
+import IconUpload from "@tabler/icons-vue/icons/IconUpload";
+import { getApiErrorMessage } from "~/utils/apiError";
+import {
+  countFlaggedFindings,
+  getLatestAnalyzedReport,
+  readHealthScore,
+} from "~/utils/reportMetrics";
+
 const api = useMedivoyApi();
 const reports = ref<any[]>([]);
 const loadingReports = ref(true);
+const reportsError = ref("");
 const auth = useAuthStore();
+
+// staggered entrance delay for grid/list items — pairs with the
+// .fade-up / .d1-.d6 utilities defined in assets/css/main.css
+const delayClass = (index: number) => `d${Math.min(index + 1, 6)}`;
+
+const latestAnalyzedReport = computed(() =>
+  getLatestAnalyzedReport(reports.value),
+);
+const scoreFromReport = (report: any) =>
+  readHealthScore(report?.overallHealthScore ?? report?.riskScore);
+const healthScore = computed(
+  () =>
+    scoreFromReport(latestAnalyzedReport.value) ??
+    readHealthScore(auth.user?.healthScore),
+);
+const isScoreFromReport = computed(
+  () => scoreFromReport(latestAnalyzedReport.value) !== null,
+);
+const flaggedFindings = computed(() =>
+  countFlaggedFindings(latestAnalyzedReport.value),
+);
+const bioAge = computed(() => {
+  const age = Number(auth.user?.bioAge);
+  return Number.isFinite(age) && age > 0 ? age : null;
+});
+const hasPendingReports = computed(() =>
+  reports.value.some((report) =>
+    ["queued", "processing"].includes(
+      String(report.status || "").toLowerCase(),
+    ),
+  ),
+);
+const reportMetricValue = (value: number | null) => {
+  if (loadingReports.value) return "Loading";
+  if (reportsError.value) return "Unavailable";
+  if (value !== null) return String(value);
+  return hasPendingReports.value ? "Processing" : "No report";
+};
 
 const stats = computed(() => [
   {
     label: "Health score",
-    value: auth.user?.healthScore ?? "87",
-    icon: "❤️",
-    iconBg: "bg-rose-50",
-    valueColor: "text-slate-900",
-    change: auth.user?.healthChange ?? "+2 from last month",
-    changeColor: "text-emerald-600",
+    highlight: true,
+    value:
+      loadingReports.value
+        ? "Loading"
+        : reportsError.value
+          ? "Unavailable"
+          : healthScore.value === null
+            ? hasPendingReports.value
+              ? "Processing"
+              : "No report"
+            : `${healthScore.value}/100`,
+    icon: IconHeartRateMonitor,
+    iconBg: "bg-cyan-50",
+    iconColor: "text-cyan-800",
+    valueColor: "text-cyan-950",
+    change: reportsError.value
+      ? "Sign in to load report data"
+      : healthScore.value !== null
+        ? `From ${latestAnalyzedReport.value?.title || "your health profile"}`
+        : "Upload a report for analysis",
+    changeColor: "text-slate-500",
   },
   {
-    label: "Risk score",
-    value: auth.user?.riskScore ? `${auth.user.riskScore}%` : "24%",
-    icon: "⚠️",
+    label: "Flagged findings",
+    highlight: false,
+    value: reportMetricValue(flaggedFindings.value),
+    icon: IconAlertTriangle,
     iconBg: "bg-amber-50",
-    valueColor: "text-amber-600",
-    change: "Moderate risk zone",
-    changeColor: "text-amber-500",
+    iconColor: "text-amber-600",
+    valueColor: "text-slate-900",
+    change: reportsError.value
+      ? "Sign in to load report data"
+      : flaggedFindings.value !== null
+        ? "From your latest analyzed report"
+        : "Available after report analysis",
+    changeColor: reportsError.value ? "text-rose-600" : "text-slate-500",
   },
   {
     label: "Bio age",
-    value: auth.user?.bioAge ?? "35",
-    icon: "🧬",
+    highlight: false,
+    value: bioAge.value === null ? "Not reported" : `${bioAge.value} years`,
+    icon: IconDna,
     iconBg: "bg-violet-50",
-    valueColor: "text-violet-600",
-    change: "2 yrs below calendar age",
-    changeColor: "text-emerald-600",
+    iconColor: "text-violet-600",
+    valueColor: "text-slate-900",
+    change: bioAge.value === null
+      ? "Not included in your saved health profile"
+      : "From your health profile",
+    changeColor: "text-slate-500",
   },
   {
     label: "Reports",
-    value: String(reports.value.length),
-    icon: "📋",
-    iconBg: "bg-blue-50",
-    valueColor: "text-blue-600",
-    change: reports.value.length
+    highlight: false,
+    value: reportsError.value ? "Unavailable" : String(reports.value.length),
+    icon: IconFiles,
+    iconBg: "bg-cyan-50",
+    iconColor: "text-cyan-700",
+    valueColor: reportsError.value ? "text-rose-700" : "text-cyan-700",
+    change: reportsError.value
+      ? "Could not load reports"
+      : reports.value.length
       ? "Latest reports loaded"
       : "Upload to get started",
-    changeColor: "text-slate-400",
+    changeColor: reportsError.value ? "text-rose-600" : "text-slate-400",
   },
 ]);
+
+const reportActivity = computed(() => {
+  const now = new Date();
+  const buckets = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + index - 5, 1);
+    return {
+      year: date.getFullYear(),
+      monthIndex: date.getMonth(),
+      label: date.toLocaleDateString("en-US", { month: "short" }),
+      count: 0,
+    };
+  });
+
+  for (const report of reports.value) {
+    if (!report.createdAt) continue;
+    const createdAt = new Date(report.createdAt);
+    if (!Number.isFinite(createdAt.getTime())) continue;
+
+    const bucket = buckets.find(
+      (month) =>
+        month.year === createdAt.getFullYear() &&
+        month.monthIndex === createdAt.getMonth(),
+    );
+    if (bucket) bucket.count += 1;
+  }
+
+  const maxCount = Math.max(0, ...buckets.map((month) => month.count));
+  const totalUploads = buckets.reduce((total, month) => total + month.count, 0);
+
+  return {
+    buckets: buckets.map((month) => ({
+      ...month,
+      height: maxCount ? Math.round((month.count / maxCount) * 100) : 0,
+    })),
+    hasData: maxCount > 0,
+    totalUploads,
+    description: buckets
+      .map((month) => `${month.label}: ${month.count}`)
+      .join(", "),
+  };
+});
 
 const quickActions = [
   {
     label: "Upload report",
     desc: "Blood, DNA, scan or PDF",
-    icon: "📤",
-    iconBg: "bg-blue-50",
+    icon: IconFileUpload,
+    iconBg: "bg-cyan-50",
+    iconColor: "text-cyan-700",
     to: "/reports/upload",
   },
   {
     label: "View reports",
     desc: "All uploaded reports",
-    icon: "📋",
+    icon: IconFiles,
     iconBg: "bg-slate-100",
+    iconColor: "text-slate-600",
     to: "/reports",
   },
   {
     label: "Family risk",
     desc: "Hereditary health history",
-    icon: "👨‍👩‍👧",
+    icon: IconActivityHeartbeat,
     iconBg: "bg-rose-50",
+    iconColor: "text-rose-600",
     to: "/family",
   },
   {
     label: "Nutrition",
     desc: "Vitamin & diet guidance",
-    icon: "🥦",
+    icon: IconSalad,
     iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
     to: "/nutrition",
   },
 ];
@@ -275,28 +498,112 @@ const formatDate = (d: string) =>
     day: "numeric",
     year: "numeric",
   });
-const riskClass = (score?: number) =>
-  !score
-    ? "text-slate-500"
-    : score >= 60
-      ? "text-rose-600"
-      : score >= 30
-        ? "text-amber-600"
-        : "text-emerald-600";
 const statusClass = (status?: string) =>
-  status === "completed"
+  status === "completed" || status === "done"
     ? "bg-emerald-100 text-emerald-700"
     : status === "failed"
       ? "bg-rose-100 text-rose-700"
       : "bg-amber-100 text-amber-700";
 
-onMounted(async () => {
+const loadReports = async () => {
+  loadingReports.value = true;
+  reportsError.value = "";
   try {
     reports.value = await api.getReports();
-  } catch {
+  } catch (error) {
     reports.value = [];
+    reportsError.value = getApiErrorMessage(
+      error,
+      "We couldn't load your reports. Please try again.",
+    );
   } finally {
     loadingReports.value = false;
   }
-});
+};
+
+onMounted(loadReports);
 </script>
+
+<style scoped>
+.health-score-track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #d7e8ee;
+}
+
+.health-score-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #0e7490;
+  transition: width 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.report-activity-track {
+  position: relative;
+  display: flex;
+  height: 7rem;
+  align-items: flex-end;
+  overflow: hidden;
+  background-image: linear-gradient(to top, #dbe7ec 1px, transparent 1px);
+  background-size: 100% 25%;
+}
+
+.report-activity-bar {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 0.5rem;
+  border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+  background: linear-gradient(to top, #0e7490, #46a6b8);
+  box-shadow: 0 3px 8px rgb(14 116 144 / 0.18);
+  transform-origin: bottom;
+}
+
+.dashboard-activity-empty__icon {
+  color: #0e7490;
+}
+
+@keyframes report-bar-rise {
+  from {
+    opacity: 0.45;
+    transform: scaleY(0.08);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes activity-empty-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .report-activity-bar {
+    animation: report-bar-rise 480ms var(--medivoy-ease) backwards;
+  }
+
+  .dashboard-activity-empty__icon {
+    animation: activity-empty-enter 360ms var(--medivoy-ease) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-score-fill {
+    transition: none;
+  }
+
+  .report-activity-bar {
+    animation: none;
+    transform: none;
+  }
+}
+</style>
