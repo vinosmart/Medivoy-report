@@ -1,1168 +1,1383 @@
 <template>
-  <div class="medivoy-page-background min-h-screen text-slate-900">
+  <div
+    class="min-h-screen bg-white text-slate-900"
+    @click="profileMenuOpen = false"
+    @keydown.esc="
+      logoutConfirmOpen ? closeLogoutConfirm() : (profileMenuOpen = false)
+    "
+  >
     <button
-      v-if="mobileNavOpen"
+      v-if="mobileMenu"
       type="button"
-      class="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
+      class="sidebar-overlay"
       aria-label="Close navigation"
-      @click="mobileNavOpen = false"
+      @click="mobileMenu = false"
     ></button>
-
-    <aside
-      class="sidebar-shell fixed bottom-0 left-0 top-0 z-40 flex w-72 max-w-[calc(100vw-2rem)] -translate-x-full flex-col border-r border-cyan-100 bg-[#edf6f7] shadow-[8px_0_30px_rgba(16,42,67,0.08)] transition-transform duration-300 ease-out lg:top-0 lg:translate-x-0 lg:shadow-none"
-      :class="{
-        'sidebar-shell--mobile-open': mobileNavOpen,
-        'sidebar-shell--desktop-collapsed': desktopSidebarCollapsed,
-      }"
-      id="app-sidebar"
-      aria-label="Main sidebar"
-    >
-      <div class="sidebar-brand border-b border-cyan-200/70 bg-gradient-to-br from-cyan-100/80 via-cyan-50/80 to-[#edf6f7] px-5 pb-4 pt-5">
-        <NuxtLink
-          to="/dashboard"
-          class="block min-w-0 rounded-xl focus-visible:outline-cyan-700"
-          draggable="false"
-          @click="mobileNavOpen = false"
+    <div class="flex min-h-screen">
+      <Teleport to="body">
+        <div
+          v-if="logoutConfirmOpen"
+          class="logout-confirm-backdrop"
+          role="presentation"
+          @click.self="closeLogoutConfirm"
+          @keydown.esc="closeLogoutConfirm"
         >
-          <img
-            src="~/assets/images/medivoy-logo-transparent.png"
-            alt="Medivoy"
-            class="block h-auto w-48 max-w-full"
-            fetchpriority="high"
-            draggable="false"
-          />
-          <span class="sidebar-compact-mark">
-            <img
-              src="~/assets/images/medivoy-mark.png"
-              alt="Medivoy"
-              class="sidebar-compact-mark__logo"
-            />
-          </span>
-        </NuxtLink>
-        <p class="sidebar-tagline mt-2 max-w-full text-xs leading-5 text-slate-600">
-          Clear health insights for better decisions.
-        </p>
-      </div>
-
-      <div class="sidebar-navigation flex-1 overflow-y-auto px-3 py-5">
-        <section
-          aria-label="Health overview"
-          class="fade-up sidebar-overview mb-5 rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-white p-4 shadow-[0_10px_24px_-22px_rgba(14,116,144,0.45)]"
+          <section
+            class="logout-confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+            aria-describedby="logout-confirm-description"
+          >
+            <div class="logout-confirm-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10" />
+              </svg>
+            </div>
+            <h2 id="logout-confirm-title">Sign out of Medivoy?</h2>
+            <p id="logout-confirm-description">
+              You will need to sign in again to access your health workspace.
+            </p>
+            <div class="logout-confirm-actions">
+              <button
+                type="button"
+                class="logout-stay-button"
+                @click="closeLogoutConfirm"
+              >
+                Stay signed in
+              </button>
+              <button
+                type="button"
+                class="logout-confirm-button"
+                @click="confirmLogout"
+              >
+                Sign out
+              </button>
+            </div>
+          </section>
+        </div>
+      </Teleport>
+      <!-- Sidebar -->
+      <aside
+        id="workspace-sidebar"
+        :class="[
+          'app-sidebar',
+          {
+            'app-sidebar-open': mobileMenu,
+            'app-sidebar-collapsed': sidebarCollapsed,
+          },
+        ]"
+      >
+        <button
+          type="button"
+          class="sidebar-toggle"
+          :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          :aria-expanded="!sidebarCollapsed"
+          aria-controls="workspace-sidebar"
+          :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          @click="sidebarCollapsed = !sidebarCollapsed"
         >
-          <div class="flex items-center gap-3">
-            <span
-              class="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-cyan-800 ring-1 ring-cyan-100"
-            >
-              <IconActivityHeartbeat
-                :size="19"
-                :stroke-width="1.8"
-                aria-hidden="true"
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path v-if="sidebarCollapsed" d="m9 6 6 6-6 6" />
+            <path v-else d="m15 6-6 6 6 6" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="sidebar-close"
+          aria-label="Close navigation"
+          @click="mobileMenu = false"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+        <div class="sidebar-brand">
+          <div class="brand-row">
+            <img :src="medivoyLogo" alt="Medivoy" class="brand-logo" />
+            <span class="brand-collapsed-mark" aria-hidden="true">
+              <img
+                :src="medivoyMark"
+                alt=""
+                class="brand-collapsed-mark__logo"
               />
             </span>
-            <div>
-              <p class="text-sm font-semibold text-slate-900">
-                Health overview
-              </p>
-              <p class="mt-0.5 text-xs text-slate-500">
-                Your latest activity
-              </p>
+            <p class="brand-caption">Personal health workspace</p>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4 py-5">
+          <div class="nav-label">Health management</div>
+          <nav class="workspace-nav" aria-label="Workspace navigation">
+            <NuxtLink
+              v-for="item in navItems"
+              :key="item.to"
+              :to="item.to"
+              class="nav-item"
+              exact-active-class="nav-item-active"
+              :aria-label="sidebarCollapsed ? item.label : undefined"
+              :title="sidebarCollapsed ? item.label : undefined"
+            >
+              <span class="nav-icon" aria-hidden="true">
+                <svg v-if="item.icon === 'D'" viewBox="0 0 24 24">
+                  <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+                  <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+                  <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+                  <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+                </svg>
+                <svg v-else-if="item.icon === 'R'" viewBox="0 0 24 24">
+                  <path
+                    d="M7 3.5h7l4 4v13H7v-17ZM14 3.5v4h4M10 12h5M10 15.5h5"
+                  />
+                </svg>
+                <svg v-else-if="item.icon === '+'" viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <svg v-else-if="item.icon === 'F'" viewBox="0 0 24 24">
+                  <circle cx="9" cy="8" r="3" />
+                  <path
+                    d="M3.5 20v-1.5A4.5 4.5 0 0 1 8 14h2a4.5 4.5 0 0 1 4.5 4.5V20M16 5.5a3 3 0 0 1 0 5.8M17 14h.5a3.5 3.5 0 0 1 3.5 3.5V20"
+                  />
+                </svg>
+                <svg v-else-if="item.icon === 'N'" viewBox="0 0 24 24">
+                  <path
+                    d="M20 4C11 4 5 7.5 5 14a6 6 0 0 0 6 6c6.5 0 9-7 9-16Z"
+                  />
+                  <path d="M4 21c3-5 7-8 12-11" />
+                </svg>
+                <svg v-else-if="item.icon === 'L'" viewBox="0 0 24 24">
+                  <path
+                    d="M9 3h6M10 3v6l-5 8.5A2.3 2.3 0 0 0 7 21h10a2.3 2.3 0 0 0 2-3.5L14 9V3M8 15h8"
+                  />
+                </svg>
+                <svg v-else-if="item.icon === 'G'" viewBox="0 0 24 24">
+                  <path
+                    d="M7 3c10 4 10 14 0 18M17 3C7 7 7 17 17 21M8 6h8M6.5 10h11M6.5 14h11M8 18h8"
+                  />
+                </svg>
+                <svg v-else-if="item.icon === 'P'" viewBox="0 0 24 24">
+                  <path
+                    d="M8 4h8a4 4 0 0 1 0 8H8a4 4 0 0 1 0-8ZM8 12h8a4 4 0 0 1 0 8H8a4 4 0 0 1 0-8ZM12 4v8M12 12v8"
+                  />
+                </svg>
+                <svg v-else viewBox="0 0 24 24">
+                  <path
+                    d="m12 3 8 3v5c0 4.5-3.2 8-8 10-4.8-2-8-5.5-8-10V6l8-3Z"
+                  />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </span>
+              <span class="flex-1">{{ item.label }}</span>
+              <span v-if="item.badge" class="nav-badge">{{ item.badge }}</span>
+            </NuxtLink>
+          </nav>
+        </div>
+
+        <div class="sidebar-account">
+          <div class="account-card">
+            <div class="account-avatar">{{ initials }}</div>
+            <div class="account-copy">
+              <span class="account-overline">Your account</span>
+              <strong>{{ accountName }}</strong>
+              <span class="account-email">{{
+                auth.user?.email || "Guest"
+              }}</span>
             </div>
           </div>
-          <div class="mt-4 grid grid-cols-2 gap-2">
-            <div class="rounded-xl border border-slate-100 bg-white p-3">
-              <p class="text-xs text-slate-500">Health score</p>
-              <p class="mt-1 truncate text-sm font-semibold text-slate-900">
-                {{ scoreDisplay }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-slate-100 bg-white p-3">
-              <p class="text-xs text-slate-500">Reports</p>
-              <p class="mt-1 text-sm font-semibold text-slate-900">
-                {{ reportsCount }}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <p class="sidebar-section-label mb-2 px-3 text-xs font-semibold text-slate-400">
-          Your workspace
-        </p>
-        <nav class="space-y-1.5" aria-label="Main navigation">
-          <NuxtLink
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="nav-item"
-            :aria-label="item.label"
-            :title="item.label"
-            active-class="nav-item--active"
-            @click="mobileNavOpen = false"
-          >
-            <component
-              :is="item.icon"
-              :size="19"
-              :stroke-width="1.8"
-              class="shrink-0"
-              aria-hidden="true"
-            />
-            <span class="sidebar-label min-w-0 flex-1">{{ item.label }}</span>
-            <span v-if="item.badge" class="sidebar-badge nav-badge">{{ item.badge }}</span>
-          </NuxtLink>
-        </nav>
-      </div>
-
-      <div class="sidebar-footer border-t border-cyan-100 bg-cyan-50/70 p-3">
-        <NuxtLink
-          to="/profile"
-          class="sidebar-account mb-2 flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-700"
-          :aria-current="route.path === '/profile' ? 'page' : undefined"
-          aria-label="Open profile"
-          title="Profile"
-        >
-          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-50 text-cyan-800 ring-1 ring-cyan-100">
-            <IconUserCircle
-              :size="21"
-              :stroke-width="1.8"
-              aria-hidden="true"
-            />
-          </span>
-          <span class="min-w-0">
-            <p class="truncate text-sm font-semibold text-slate-800">
-              {{ auth.user?.name || "Your account" }}
-            </p>
-            <p class="truncate text-xs text-slate-500">
-              {{ auth.user?.email || "Guest" }}
-            </p>
-          </span>
-        </NuxtLink>
-        <button type="button" class="sign-out-button" aria-label="Sign out" title="Sign out" @click="logout">
-          <IconLogout2 :size="18" :stroke-width="1.8" aria-hidden="true" />
-          <span class="sidebar-label">Sign out</span>
-        </button>
-      </div>
-    </aside>
-
-    <Transition name="route">
-      <nav
-        v-if="mobileNavOpen"
-        id="mobile-navigation"
-        class="mobile-nav-panel lg:hidden"
-        aria-label="Mobile navigation"
-      >
-        <div class="mobile-nav-panel__header">
-          <NuxtLink
-            to="/profile"
-            role="menuitem"
-            class="account-menu__action"
-            @click="accountMenuOpen = false"
-          >
-            <span class="account-menu__action-icon">
-              <IconUserCircle :size="17" :stroke-width="1.8" aria-hidden="true" />
-            </span>
-            <span>Profile</span>
-            <IconChevronRight :size="16" class="ml-auto text-slate-400" aria-hidden="true" />
-          </NuxtLink>
-          <NuxtLink
-            to="/dashboard"
-            class="mobile-nav-panel__brand"
-            draggable="false"
-            @click="mobileNavOpen = false"
-          >
-            <img
-              src="~/assets/images/medivoy-logo-transparent.png"
-              alt="Medivoy"
-              draggable="false"
-            />
-          </NuxtLink>
-          <button
-            type="button"
-            class="mobile-nav-panel__close"
-            aria-label="Close navigation"
-            @click="mobileNavOpen = false"
-          >
-            <IconX :size="19" :stroke-width="1.8" aria-hidden="true" />
+          <button @click="openLogoutConfirm" class="sign-out">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10" />
+            </svg>
+            <span class="sign-out-label">Sign out</span>
           </button>
         </div>
-        <div class="mobile-nav-list">
-          <NuxtLink
-            v-for="item in navItems"
-            :key="`mobile-${item.to}`"
-            :to="item.to"
-            class="mobile-nav-item"
-            :aria-label="item.label"
-            active-class="mobile-nav-item--active"
-            @click="mobileNavOpen = false"
-          >
-            <component
-              :is="item.icon"
-              :size="21"
-              :stroke-width="1.8"
-              aria-hidden="true"
-            />
-            <span class="mobile-nav-item__label">{{ item.label }}</span>
-          </NuxtLink>
-        </div>
-      </nav>
-    </Transition>
+      </aside>
 
-    <div
-      class="layout-content min-h-screen min-w-0"
-      :class="{
-        'lg:pl-72': !desktopSidebarCollapsed,
-        'main-layout--sidebar-collapsed': desktopSidebarCollapsed,
-      }"
-    >
-      <header
-        class="fade-up sticky top-0 z-20 border-b border-cyan-100/80 bg-gradient-to-r from-cyan-50/70 via-white/95 to-white/90 backdrop-blur-xl"
-        :class="{ 'z-50': navigationOpen }"
+      <!-- Content -->
+      <div
+        :class="[
+          'flex-1',
+          'xl:pl-80',
+          { 'app-content-collapsed': sidebarCollapsed },
+        ]"
       >
-        <div class="flex h-[72px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-          <div class="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              class="menu-button"
-              :class="{ 'menu-button--open': mobileNavOpen }"
-              :aria-expanded="navigationOpen"
-              :aria-controls="isDesktopViewport ? 'app-sidebar' : 'mobile-navigation'"
-              :aria-label="
-                isDesktopViewport
-                  ? desktopSidebarCollapsed
-                    ? 'Expand sidebar'
-                    : 'Collapse sidebar'
-                  : mobileNavOpen
-                    ? 'Close navigation'
-                    : 'Open navigation'
-              "
-              @click.stop.prevent="toggleMobileNavigation"
-            >
-              <IconX v-if="mobileNavOpen" :size="20" aria-hidden="true" />
-              <IconMenu2 v-else :size="20" aria-hidden="true" />
-            </button>
-            <div
-              :key="route.path"
-              class="min-w-0"
-              :class="[
-                { 'invisible lg:visible': mobileNavOpen },
-                'page-heading-enter',
-              ]"
-            >
-              <h2
-                class="truncate text-base font-semibold text-cyan-900 sm:text-lg"
-              >
-                {{ title }}
-              </h2>
-              <p
-                class="hidden truncate text-xs text-cyan-800 sm:block"
-              >
-                {{ subtitle }}
-              </p>
-            </div>
-          </div>
-
+        <header
+          class="app-header sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl"
+        >
           <div
-            ref="accountMenu"
-            class="relative shrink-0"
-            :class="{ 'invisible lg:visible': mobileNavOpen }"
+            class="app-header-inner flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
           >
-            <button
-              type="button"
-              class="account-trigger"
-              :aria-expanded="accountMenuOpen"
-              aria-haspopup="menu"
-              aria-label="Open account menu"
-              @click.stop="accountMenuOpen = !accountMenuOpen"
-            >
-              <span class="hidden min-w-0 text-right sm:block">
-                <span class="block truncate text-sm font-semibold text-slate-800">
-                  {{ auth.user?.name || "Your account" }}
-                </span>
-                <span class="block truncate text-xs text-slate-500">
-                  {{ auth.user?.email || "Guest" }}
-                </span>
-              </span>
-              <span class="account-avatar">
-                <IconUserCircle :size="22" :stroke-width="1.8" aria-hidden="true" />
-              </span>
-              <IconChevronDown :size="16" class="hidden text-slate-400 sm:block" aria-hidden="true" />
-            </button>
-
-            <Transition name="route">
-              <div
-                v-if="accountMenuOpen"
-                class="account-menu"
-                role="menu"
-                aria-label="Account options"
+            <div class="flex items-center gap-3">
+              <!--     <button
+                type="button"
+                @click="mobileMenu = true"
+                class="app-menu-button xl:hidden"
+                aria-label="Open navigation"
               >
-                <div class="account-menu__profile">
-                  <span class="account-menu__avatar">
-                    <IconUserCircle :size="24" :stroke-width="1.8" aria-hidden="true" />
-                  </span>
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-semibold text-slate-900">
-                      {{ auth.user?.name || "Your account" }}
-                    </p>
-                    <p class="mt-0.5 truncate text-xs text-slate-500">
-                      {{ auth.user?.email || "Guest" }}
-                    </p>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              </button>-->
+
+              <div class="header-titles">
+                <h2>{{ title }}</h2>
+                <p>{{ subtitle }}</p>
+              </div>
+            </div>
+            <div class="header-account-menu">
+              <button
+                type="button"
+                class="header-profile"
+                :aria-expanded="profileMenuOpen"
+                aria-haspopup="menu"
+                aria-controls="header-profile-menu"
+                :aria-label="`${accountName} account menu`"
+                @click.stop="profileMenuOpen = !profileMenuOpen"
+              >
+                <span class="header-profile-copy">
+                  <span class="header-user-overline"><i></i> Signed in</span>
+                  <span class="header-user-name">{{ accountName }}</span>
+                  <span class="header-user-email">{{
+                    auth.user?.email || "Guest"
+                  }}</span>
+                </span>
+                <span class="header-avatar" aria-hidden="true">{{
+                  initials
+                }}</span>
+              </button>
+              <div v-if="profileMenuOpen" class="header-profile-menu">
+                <div class="profile-menu-account">
+                  <span class="profile-menu-avatar" aria-hidden="true">{{
+                    initials
+                  }}</span>
+                  <div class="profile-menu-copy">
+                    <span class="profile-menu-overline">Your account</span>
+                    <strong>{{ accountName }}</strong>
+                    <span class="profile-menu-email">{{
+                      auth.user?.email || "Guest"
+                    }}</span>
                   </div>
-                  <span class="account-menu__role">
-                    {{ auth.isAdmin ? "Admin" : "Member" }}
-                  </span>
                 </div>
-                <div class="account-menu__links">
-                  <NuxtLink
-                    to="/dashboard"
-                    role="menuitem"
-                    class="account-menu__action"
-                    @click="accountMenuOpen = false"
-                  >
-                    <span class="account-menu__action-icon">
-                      <IconLayoutDashboard :size="17" :stroke-width="1.8" aria-hidden="true" />
-                    </span>
-                    <span>Dashboard</span>
-                    <IconChevronRight :size="16" class="ml-auto text-slate-400" aria-hidden="true" />
-                  </NuxtLink>
-                  <NuxtLink
-                    to="/family"
-                    role="menuitem"
-                    class="account-menu__action"
-                    @click="accountMenuOpen = false"
-                  >
-                    <span class="account-menu__action-icon">
-                      <IconUsersGroup :size="17" :stroke-width="1.8" aria-hidden="true" />
-                    </span>
-                    <span>Family health</span>
-                    <IconChevronRight :size="16" class="ml-auto text-slate-400" aria-hidden="true" />
-                  </NuxtLink>
-                </div>
-                <div class="border-t border-slate-100 p-2">
+                <div id="header-profile-menu" role="menu">
                   <button
                     type="button"
+                    class="profile-sign-out"
                     role="menuitem"
-                    class="account-menu__action account-menu__action--danger"
-                    @click="logout"
+                    @click="openLogoutConfirm"
                   >
-                    <span class="account-menu__action-icon">
-                      <IconLogout2 :size="17" :stroke-width="1.8" aria-hidden="true" />
-                    </span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10" />
+                    </svg>
                     <span>Sign out</span>
                   </button>
                 </div>
               </div>
-            </Transition>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div
-        v-if="guestMode"
-        role="status"
-        class="mx-4 mt-4 flex flex-col gap-3 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-950 sm:mx-6 sm:flex-row sm:items-center sm:justify-between lg:mx-8"
-      >
-        <p>Sign in to load and manage your protected health information.</p>
-        <NuxtLink
-          to="/"
-          class="medivoy-primary-button inline-flex min-h-10 items-center justify-center rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-900"
-        >
-          Sign in
-        </NuxtLink>
-      </div>
-
-      <main id="main-content" class="px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-        <Transition name="route" mode="out-in">
-          <div :key="route.path" class="page-shell mx-auto max-w-7xl">
+        <main class="app-main px-4 py-6 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+          <div class="mx-auto max-w-7xl">
             <slot />
           </div>
-        </Transition>
-      </main>
+        </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  type Component,
-} from "vue";
-import IconActivityHeartbeat from "@tabler/icons-vue/icons/IconActivityHeartbeat";
-import IconChevronDown from "@tabler/icons-vue/icons/IconChevronDown";
-import IconChevronRight from "@tabler/icons-vue/icons/IconChevronRight";
-import IconDna from "@tabler/icons-vue/icons/IconDna";
-import IconFileUpload from "@tabler/icons-vue/icons/IconFileUpload";
-import IconFiles from "@tabler/icons-vue/icons/IconFiles";
-import IconLayoutDashboard from "@tabler/icons-vue/icons/IconLayoutDashboard";
-import IconLogout2 from "@tabler/icons-vue/icons/IconLogout2";
-import IconMenu2 from "@tabler/icons-vue/icons/IconMenu2";
-import IconPill from "@tabler/icons-vue/icons/IconPill";
-import IconSalad from "@tabler/icons-vue/icons/IconSalad";
-import IconShield from "@tabler/icons-vue/icons/IconShield";
-import IconTestPipe from "@tabler/icons-vue/icons/IconTestPipe";
-import IconUserCircle from "@tabler/icons-vue/icons/IconUserCircle";
-import IconUsersGroup from "@tabler/icons-vue/icons/IconUsersGroup";
-import IconX from "@tabler/icons-vue/icons/IconX";
+import medivoyLogo from "~/assets/images/medivoy-logo-color.png";
+import medivoyMark from "~/assets/images/logo.png";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {
-  getLatestAnalyzedReport,
-  readHealthScore,
-} from "~/utils/reportMetrics";
-import { getDeduplicatedReports } from "~/utils/getDeduplicatedReports";
 
 declare function useAuthStore(): any;
 declare function useMedivoyApi(): { getReports: () => Promise<any[]> };
 
-type NavItem = {
-  label: string;
-  to: string;
-  icon: Component;
-  badge?: string;
-};
-
 const auth = useAuthStore();
-const api = useMedivoyApi();
 const router = useRouter();
 const route = useRoute();
 const reports = ref<any[]>([]);
-const reportsLoading = ref(false);
-const reportsUnavailable = ref(false);
-const mobileNavOpen = ref(false);
-const desktopSidebarCollapsed = ref(false);
-const isDesktopViewport = ref(false);
-const guestMode = ref(false);
-const accountMenuOpen = ref(false);
-const accountMenu = ref<HTMLElement | null>(null);
+const mobileMenu = ref(false);
+const sidebarCollapsed = ref(true);
+const profileMenuOpen = ref(false);
+const logoutConfirmOpen = ref(false);
 
-const navigationOpen = computed(() =>
-  isDesktopViewport.value
-    ? !desktopSidebarCollapsed.value
-    : mobileNavOpen.value,
+watch(sidebarCollapsed, (collapsed) => {
+  if (import.meta.client) {
+    localStorage.setItem("medivoy_sidebar_collapsed", String(collapsed));
+  }
+});
+
+const accountName = computed(() => {
+  const name = String(auth.user?.name || "").trim();
+  if (name) return name;
+  const email = String(auth.user?.email || "").trim();
+  return email ? email.split("@")[0] : "Medivoy user";
+});
+
+watch(
+  () => route.fullPath,
+  () => {
+    mobileMenu.value = false;
+    profileMenuOpen.value = false;
+  },
 );
 
-const toggleMobileNavigation = () => {
-  isDesktopViewport.value = window.matchMedia("(min-width: 64rem)").matches;
-  if (isDesktopViewport.value) {
-    desktopSidebarCollapsed.value = !desktopSidebarCollapsed.value;
-    return;
-  }
-
-  mobileNavOpen.value = !mobileNavOpen.value;
-};
-
-const syncViewport = () => {
-  isDesktopViewport.value = window.matchMedia("(min-width: 64rem)").matches;
-};
-
-const navItems = computed<NavItem[]>(() => [
-  { label: "Dashboard", to: "/dashboard", icon: IconLayoutDashboard },
+const navItems = computed(() => [
+  { label: "Dashboard", to: "/dashboard", icon: "D" },
   {
     label: "Reports",
     to: "/reports",
-    icon: IconFiles,
-    badge: reports.value.length ? String(reports.value.length) : undefined,
+    icon: "R",
+    badge: reports.value.length ? String(reports.value.length) : "",
   },
-  { label: "Upload report", to: "/reports/upload", icon: IconFileUpload },
-  { label: "Family health", to: "/family", icon: IconUsersGroup },
-  { label: "Nutrition", to: "/nutrition", icon: IconSalad },
-  { label: "Lab kits", to: "/lab-kits", icon: IconTestPipe },
-  { label: "Genetics", to: "/genetics", icon: IconDna },
-  { label: "Pharmacy", to: "/pharmacy", icon: IconPill },
-  { label: "Admin", to: "/admin", icon: IconShield },
+  { label: "Upload report", to: "/reports/upload", icon: "+" },
+  { label: "Family health", to: "/family", icon: "F" },
+  { label: "Nutrition", to: "/nutrition", icon: "N" },
+  { label: "Lab kits", to: "/lab-kits", icon: "L" },
+  { label: "Genetics", to: "/genetics", icon: "G" },
+  { label: "Pharmacy", to: "/pharmacy", icon: "P" },
+  { label: "Admin", to: "/admin", icon: "A", badge: auth.isAdmin ? "on" : "" },
 ]);
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/profile": "Profile",
   "/reports": "Reports",
-  "/reports/upload": "Upload report",
-  "/family": "Family health",
+  "/reports/upload": "Upload Report",
+  "/family": "Family Health",
   "/nutrition": "Nutrition",
-  "/lab-kits": "Lab kits",
+  "/lab-kits": "Lab Kits",
   "/genetics": "Genetics",
   "/pharmacy": "Pharmacy",
   "/admin": "Admin",
 };
 
 const subtitleMap: Record<string, string> = {
-  "/dashboard": "A clear overview of your health",
-  "/profile": "Review your account information",
-  "/reports": "Your uploaded health records",
-  "/reports/upload": "Add a health record to your profile",
-  "/family": "Keep family health history organized",
-  "/nutrition": "Guidance based on your health profile",
-  "/lab-kits": "Explore home collection options",
-  "/genetics": "Review your genetic profile",
-  "/pharmacy": "Find medicines and doctors",
-  "/admin": "Manage platform activity",
+  "/dashboard": "Overview of your health intelligence",
+  "/reports": "Manage uploaded reports",
+  "/reports/upload": "Upload and analyze a new report",
+  "/family": "Track hereditary and family history",
+  "/nutrition": "View diet and vitamin guidance",
+  "/lab-kits": "Partner kits and fulfillment",
+  "/genetics": "DNA and variant insights",
+  "/pharmacy": "Search medicines and find doctors",
+  "/admin": "Platform control center",
 };
 
-const title = computed(
-  () =>
-    routeTitles[route.path] ||
-    (route.path.startsWith("/reports/") ? "Report details" : "Medivoy"),
-);
+const title = computed(() => routeTitles[route.path] || "Medivoy");
 const subtitle = computed(
-  () =>
-    subtitleMap[route.path] ||
-    (route.path.startsWith("/reports/")
-      ? "Review the report and its analysis"
-      : "Clear health insights for better decisions."),
+  () => subtitleMap[route.path] || "Preventive Health OS",
 );
-
-const latestAnalyzedReport = computed(() =>
-  getLatestAnalyzedReport(reports.value),
+const initials = computed(() =>
+  (auth.user?.name || auth.user?.email || "M")
+    .split(" ")
+    .map((v: string) => v[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase(),
 );
-const reportHealthScore = computed(() =>
-  readHealthScore(
-    latestAnalyzedReport.value?.overallHealthScore ??
-      latestAnalyzedReport.value?.riskScore,
-  ),
-);
-const scoreDisplay = computed(() => {
-  if (reportsLoading.value) return "Loading";
+const scoreDisplay = computed(() => auth.user?.healthScore ?? "87");
+const reportsCount = computed(() => reports.value.length);
 
-  const score =
-    reportHealthScore.value ?? readHealthScore(auth.user?.healthScore);
-  if (score !== null) return `${score}/100`;
+const openLogoutConfirm = () => {
+  profileMenuOpen.value = false;
+  mobileMenu.value = false;
+  logoutConfirmOpen.value = true;
+};
 
-  return reportsUnavailable.value ? "Unavailable" : "No data";
-});
-const reportsCount = computed(() => {
-  if (reportsLoading.value) return "Loading";
-  return reportsUnavailable.value ? "Unavailable" : reports.value.length;
-});
+const closeLogoutConfirm = () => {
+  logoutConfirmOpen.value = false;
+};
 
-const logout = () => {
-  accountMenuOpen.value = false;
-  mobileNavOpen.value = false;
+const confirmLogout = () => {
   auth.logout();
+  logoutConfirmOpen.value = false;
   router.push("/");
 };
 
-const handlePointerDown = (event: PointerEvent) => {
-  if (!accountMenu.value?.contains(event.target as Node)) {
-    accountMenuOpen.value = false;
-  }
-};
-
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === "Escape") {
-    mobileNavOpen.value = false;
-    accountMenuOpen.value = false;
-  }
-};
-
-watch(
-  () => route.path,
-  () => {
-    mobileNavOpen.value = false;
-    accountMenuOpen.value = false;
-  },
-);
-
 onMounted(async () => {
-  document.addEventListener("pointerdown", handlePointerDown);
-  window.addEventListener("keydown", handleKeydown);
-  window.addEventListener("resize", syncViewport);
-  syncViewport();
+  const savedSidebarState = localStorage.getItem("medivoy_sidebar_collapsed");
+  if (savedSidebarState === "true" || savedSidebarState === "false") {
+    sidebarCollapsed.value = savedSidebarState === "true";
+  }
 
-  guestMode.value = !auth.token;
-  if (!auth.token) return;
-
-  reportsLoading.value = true;
   try {
-    reports.value = await getDeduplicatedReports(auth.token, () =>
-      api.getReports(),
-    );
+    reports.value = await useMedivoyApi().getReports();
   } catch {
     reports.value = [];
-    reportsUnavailable.value = true;
-  } finally {
-    reportsLoading.value = false;
   }
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("pointerdown", handlePointerDown);
-  window.removeEventListener("keydown", handleKeydown);
-  window.removeEventListener("resize", syncViewport);
 });
 </script>
 
 <style scoped>
-.sidebar-shell {
-  transition:
-    width 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    translate 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.layout-content {
-  transition: padding-left 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.sidebar-label {
-  flex: 1 1 auto;
-  max-width: 12rem;
-  overflow: hidden;
-  white-space: nowrap;
-  transition:
-    max-width 160ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    opacity 120ms ease;
-}
-
-.sidebar-compact-mark {
-  transition:
-    opacity 140ms ease,
-    transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-@media (max-width: 63.999rem) {
-  .sidebar-shell {
-    display: none;
-  }
-}
-
-.sidebar-shell--mobile-open {
-  top: 72px;
-  translate: 0 0;
-}
-
-.mobile-nav-panel {
+@reference "tailwindcss";
+.app-sidebar {
   position: fixed;
-  top: 72px;
-  left: 0.75rem;
-  z-index: 45;
-  bottom: 0.75rem;
+  z-index: 50;
+  inset: 0 auto 0 0;
   display: flex;
-  width: 224px;
-  max-width: calc(100vw - 1.5rem);
+  width: 264px;
   flex-direction: column;
-  overflow: visible;
-  border: 1px solid #cfe3e8;
-  border-radius: 1rem;
-  background: rgb(241 248 249 / 0.98);
-  padding: 0.625rem 0.5rem;
-  box-shadow: 0 18px 42px -24px rgb(14 116 144 / 0.28);
-  backdrop-filter: blur(16px);
+  border-right: 1px solid #d3e9ee;
+  background: #fff;
+  box-shadow: 8px 0 28px rgba(14, 116, 144, 0.08);
+  transition: width 0.22s ease;
 }
-
-.mobile-nav-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border-bottom: 1px solid #d7e8eb;
-  padding: 0 0 0.625rem;
-}
-
-.mobile-nav-panel__brand {
-  display: block;
-  min-width: 0;
-  border-radius: 0.5rem;
-}
-
-.mobile-nav-panel__brand img {
-  display: block;
-  width: 8.5rem;
-  max-width: 100%;
-  height: auto;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.sidebar-brand > a > img {
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.mobile-nav-panel__close {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 0.875rem;
-  background: #e6f2f4;
-  color: #35556a;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.mobile-nav-panel__close:hover {
-  background: #dceef1;
-  color: #0e5c70;
-}
-
-.mobile-nav-list {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.25rem;
-  overflow-y: auto;
-  padding-top: 0.625rem;
-}
-
-.mobile-nav-item {
-  position: relative;
-  display: flex;
-  width: 100%;
-  min-height: 44px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
-  padding: 0 0.75rem;
-  color: #526579;
-  text-align: left;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.mobile-nav-item:active {
-  transform: scale(0.97);
-}
-
-.mobile-nav-item__label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-}
-
-.mobile-nav-item:focus-visible {
-  outline: 2px solid #0e7490;
-  outline-offset: 2px;
-}
-
-.mobile-nav-item:hover,
-.mobile-nav-item--active {
-  border-color: #bfe0e5;
-  background: #dff1f4;
-  color: #0e5c70;
-}
-
-.mobile-nav-item--active::before {
+.sidebar-toggle {
   position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: -0.5rem;
-  width: 3px;
-  border-radius: 0 999px 999px 0;
-  background: #0e7490;
-  content: "";
-}
-
-@media (max-width: 16rem) {
-  .sidebar-shell {
-    width: 4.5rem;
-    max-width: calc(100vw - 1rem);
-  }
-
-  .sidebar-brand {
-    padding: 0.5rem;
-  }
-
-  .sidebar-brand img {
-    width: 3.25rem;
-  }
-
-  .sidebar-tagline,
-  .sidebar-overview,
-  .sidebar-section-label,
-  .sidebar-label,
-  .sidebar-badge,
-  .sidebar-account {
-    display: none;
-  }
-
-  .sidebar-navigation {
-    padding: 0.5rem 0.25rem;
-  }
-
-  .nav-item {
-    justify-content: center;
-    gap: 0;
-    padding-inline: 0;
-  }
-
-  .sidebar-footer {
-    padding: 0.5rem;
-  }
-
-  .sign-out-button {
-    width: 2.75rem;
-    margin-inline: auto;
-    padding: 0;
-  }
-}
-
-@media (min-width: 64rem) {
-  .sidebar-shell--desktop-collapsed {
-    width: 5rem;
-    translate: 0;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-brand {
-    display: grid;
-    min-height: 5rem;
-    place-items: center;
-    padding: 0.75rem;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-brand > a > img,
-  .sidebar-shell--desktop-collapsed .sidebar-tagline,
-  .sidebar-shell--desktop-collapsed .sidebar-overview,
-  .sidebar-shell--desktop-collapsed .sidebar-section-label,
-  .sidebar-shell--desktop-collapsed .sidebar-badge {
-    display: none;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-account {
-    justify-content: center;
-    gap: 0;
-    border-color: transparent;
-    background: transparent;
-    padding: 0;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-account:hover {
-    border-color: #cfe4e9;
-    background: #fff;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-account > span:last-child {
-    display: none;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-label {
-    flex: 0 0 0;
-    max-width: 0;
-    opacity: 0;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-compact-mark {
-    display: grid;
-    animation: compact-mark-enter 180ms ease both;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-navigation {
-    padding-inline: 0.5rem;
-  }
-
-  @keyframes compact-mark-enter {
-    from {
-      opacity: 0;
-      transform: scale(0.92);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .sidebar-shell--desktop-collapsed .nav-item {
-    justify-content: center;
-    gap: 0;
-    padding-inline: 0;
-  }
-
-  .sidebar-shell--desktop-collapsed .sidebar-footer {
-    padding: 0.5rem;
-  }
-
-  .sidebar-shell--desktop-collapsed .sign-out-button {
-    justify-content: center;
-    padding-inline: 0;
-  }
-
-  .sidebar-shell--desktop-collapsed .sign-out-button .sidebar-label {
-    display: none;
-  }
-
-  .main-layout--sidebar-collapsed {
-    padding-left: 5rem;
-  }
-}
-
-.nav-item {
-  display: flex;
-  min-height: 46px;
-  align-items: center;
-  gap: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.875rem;
-  padding: 0.6rem 0.75rem;
-  color: var(--medivoy-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
-}
-
-.sidebar-compact-mark {
-  position: relative;
-  display: none;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid #cde5ea;
-  border-radius: 0.875rem;
-  background: #eaf7f9;
-}
-
-.sidebar-compact-mark__logo {
-  display: block;
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-}
-
-.nav-item:hover {
-  background-color: #e4f1f3;
-  color: var(--medivoy-ink);
-}
-
-.nav-item:active {
-  transform: scale(0.985);
-}
-
-.nav-item--active {
-  border-color: #bfe0e5;
-  background: linear-gradient(90deg, #dff1f4, #edf7f8);
-  box-shadow: inset 3px 0 0 var(--medivoy-accent);
-  color: #0e5c70;
-  font-weight: 600;
-}
-
-.nav-item--active .nav-badge {
-  background: #fff;
-  color: #0e5c70;
-}
-
-.nav-badge {
-  min-width: 1.5rem;
-  border-radius: 999px;
-  background: #f1f7fa;
-  padding: 0.15rem 0.4rem;
-  color: var(--medivoy-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.menu-button,
-.account-trigger {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  border: 1px solid var(--medivoy-border);
-  background: #fff;
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease,
-    transform 180ms ease;
-}
-
-.menu-button {
-  width: 42px;
-  border-radius: 0.875rem;
-  color: #334e68;
-}
-
-.menu-button:hover,
-.account-trigger:hover {
-  border-color: #cbd9e5;
-  background: #f8fbfd;
-  transform: translateY(-1px);
-}
-
-.menu-button--open {
-  border-color: #cfe4e9;
-  background: #eaf6f8;
-  color: #0e5c70;
-}
-
-.menu-button:active,
-.account-trigger:active,
-.sign-out-button:active,
-.account-menu__action:active {
-  transform: scale(0.985);
-}
-
-.account-trigger {
-  border-color: transparent;
-  border-radius: 1rem;
-  padding: 0.25rem;
-  background: transparent;
-}
-
-.account-trigger[aria-expanded="true"] {
-  border-color: #d3e9ee;
-  background: #eff7f8;
-}
-
-.account-avatar {
+  z-index: 3;
+  top: 46px;
+  right: -15px;
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 30px;
+  height: 44px;
   place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--medivoy-accent), #155e75);
+  border: 1px solid #0e7490;
+  border-radius: 0 9px 9px 0;
+  background: #0e7490;
+  color: #fff;
+  box-shadow: 3px 4px 10px rgba(14, 116, 144, 0.12);
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+.sidebar-toggle:hover {
+  border-color: #0b5a6c;
+  background: #0b5a6c;
   color: #fff;
 }
-
-.account-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  z-index: 50;
-  width: min(19.5rem, calc(100vw - 2rem));
-  overflow: hidden;
-  border: 1px solid var(--medivoy-border);
-  border-radius: 1rem;
-  background: #fff;
-  box-shadow: 0 16px 40px rgb(15 23 42 / 0.12);
-  transform-origin: top right;
-  animation: account-menu-enter 160ms cubic-bezier(.2, .7, .2, 1);
+.sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-
-@keyframes account-menu-enter {
+.sidebar-toggle:focus-visible {
+  outline: 3px solid rgba(14, 116, 144, 0.35);
+  outline-offset: 2px;
+}
+.sidebar-overlay {
+  position: fixed;
+  z-index: 49;
+  inset: 0;
+  border: 0;
+  background: rgba(22, 43, 69, 0.38);
+  backdrop-filter: blur(4px);
+}
+.sidebar-close {
+  display: none;
+}
+.sidebar-brand {
+  display: flex;
+  height: 92px;
+  flex: 0 0 auto;
+  align-items: center;
+  border-bottom: 1px solid #e3f1f3;
+  padding: 14px 22px;
+}
+.brand-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.brand-logo {
+  display: block;
+  width: 176px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.brand-collapsed-mark {
+  display: none;
+}
+.brand-collapsed-mark__logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.brand-caption {
+  margin: 2px 0 0 2px;
+  color: #8498b1;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.app-sidebar > .flex-1.overflow-y-auto {
+  padding: 16px 14px;
+}
+.nav-label {
+  margin: 1px 10px 10px;
+  color: #5c7490;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.workspace-nav {
+  display: grid;
+  gap: 3px;
+}
+.nav-item {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 4px 9px;
+  color: #3d5870;
+  font-family: Poppins, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.nav-item:hover {
+  background: #e4f1f3;
+  color: #0e5c70;
+}
+.nav-item-active {
+  border-color: #cde5ea;
+  background: linear-gradient(105deg, #dff1f4, #eaf6f8);
+  color: #0e5c70;
+  box-shadow:
+    inset 3px 0 0 #22a6c3,
+    0 2px 8px rgba(14, 116, 144, 0.04);
+}
+.nav-icon {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: #eaf7f9;
+  color: #517089;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.nav-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-item:hover .nav-icon {
+  border-color: #dff1f4;
+  background: #fff;
+  color: #0e7490;
+}
+.nav-item-active .nav-icon {
+  border-color: #072e36;
+  background: #072e36;
+  color: #fff;
+}
+.nav-item > .flex-1 {
+  padding-left: 1px;
+}
+.nav-badge {
+  border: 1px solid #d3e9ee;
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px 8px;
+  color: #7890ae;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.nav-item-active .nav-badge {
+  border-color: #bfe0e5;
+  background: #dff1f4;
+  color: #0e7490;
+}
+.sidebar-account {
+  flex: 0 0 auto;
+  border-top: 1px solid #e3f1f3;
+  background: #f1f7fa;
+  padding: 12px;
+}
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #114955;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 88% 12%,
+      rgba(94, 211, 225, 0.2),
+      transparent 28%
+    ),
+    linear-gradient(145deg, #072e36 0%, #0b4a56 58%, #0e5c70 100%);
+  padding: 9px;
+}
+.account-avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(205, 240, 245, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #0e7490, #0e5c70);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.account-copy {
+  min-width: 0;
+}
+.account-copy > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-overline {
+  margin-bottom: 3px;
+  color: #bdeaf0;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.account-card .account-copy strong {
+  display: block;
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-card .account-copy .account-email {
+  margin-top: 3px;
+  color: #d7eef0;
+  font-size: 9px;
+}
+.sign-out {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #71839a;
+  font-family: Poppins, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.sign-out svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sign-out:hover {
+  border-color: #d3e9ee;
+  background: #fff;
+  color: #0e7490;
+}
+.nav-item:focus-visible,
+.sign-out:focus-visible,
+.sidebar-close:focus-visible {
+  outline: 3px solid rgba(14, 116, 144, 0.35);
+  outline-offset: 2px;
+}
+.flex-1.xl\:pl-80 {
+  padding-left: 264px;
+  transition: padding-left 0.22s ease;
+}
+.app-sidebar-collapsed {
+  width: 76px;
+}
+.app-sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 14px 8px;
+}
+.app-sidebar-collapsed .brand-row {
+  align-items: center;
+}
+.app-sidebar-collapsed .brand-logo,
+.app-sidebar-collapsed .brand-caption,
+.app-sidebar-collapsed .nav-label,
+.app-sidebar-collapsed .nav-item > .flex-1,
+.app-sidebar-collapsed .nav-badge,
+.app-sidebar-collapsed .account-copy,
+.app-sidebar-collapsed .sign-out-label {
+  display: none;
+}
+.app-sidebar-collapsed .brand-collapsed-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #bfe0e5;
+  border-radius: 11px;
+  background: #eaf7f9;
+  color: #0e7490;
+  font-size: 19px;
+  font-weight: 800;
+}
+.app-sidebar-collapsed > .flex-1.overflow-y-auto {
+  padding: 16px 8px;
+}
+.app-sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 4px;
+}
+.app-sidebar-collapsed .sidebar-account {
+  padding: 10px 8px;
+}
+.app-sidebar-collapsed .account-card {
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}
+.app-sidebar-collapsed .sign-out {
+  width: 40px;
+  margin-right: auto;
+  margin-left: auto;
+}
+.flex-1.xl\:pl-80.app-content-collapsed {
+  padding-left: 76px;
+}
+@media (min-width: 1280px) {
+  .app-sidebar-collapsed {
+    border-right-color: #114955;
+    background: linear-gradient(180deg, #072e36 0%, #0b4a56 58%, #0e5c70 100%);
+    box-shadow: 8px 0 28px rgba(7, 46, 54, 0.18);
+  }
+  .app-sidebar-collapsed .sidebar-brand,
+  .app-sidebar-collapsed .sidebar-account {
+    border-color: rgba(205, 240, 245, 0.14);
+  }
+  .app-sidebar-collapsed .sidebar-account {
+    background: rgba(3, 23, 27, 0.2);
+  }
+  .app-sidebar-collapsed .sidebar-toggle {
+    border-color: #0e7490;
+    background: #0e7490;
+    color: #fff;
+    box-shadow: 3px 4px 12px rgba(3, 23, 27, 0.24);
+  }
+  .app-sidebar-collapsed .sidebar-toggle:hover {
+    border-color: #22a6c3;
+    background: #0b5a6c;
+  }
+  .app-sidebar-collapsed .brand-collapsed-mark {
+    border-color: rgba(205, 240, 245, 0.28);
+    background: rgba(94, 211, 225, 0.2);
+    color: #d7f3f5;
+  }
+  .app-sidebar-collapsed .nav-item {
+    color: #bfe6ec;
+  }
+  .app-sidebar-collapsed .nav-item:hover {
+    border-color: rgba(205, 240, 245, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+  .app-sidebar-collapsed .nav-item-active {
+    border-color: rgba(205, 240, 245, 0.24);
+    background: linear-gradient(
+      105deg,
+      rgba(14, 116, 144, 0.3),
+      rgba(11, 90, 108, 0.42)
+    );
+    color: #fff;
+    box-shadow: inset 3px 0 0 #5fb8cc;
+  }
+  .app-sidebar-collapsed .nav-icon {
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.08);
+    color: #b6e6ec;
+  }
+  .app-sidebar-collapsed .nav-item:hover .nav-icon {
+    border-color: rgba(205, 240, 245, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+  .app-sidebar-collapsed .nav-item-active .nav-icon {
+    border-color: #22a6c3;
+    background: #0e7490;
+    color: #fff;
+  }
+  .app-sidebar-collapsed .account-avatar {
+    border-color: rgba(205, 240, 245, 0.28);
+    background: linear-gradient(145deg, #0e7490, #0e5c70);
+    color: #fff;
+  }
+  .app-sidebar-collapsed .sign-out {
+    color: #b6e6ec;
+  }
+  .app-sidebar-collapsed .sign-out:hover {
+    border-color: rgba(205, 240, 245, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+}
+.app-header {
+  position: sticky;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 82px;
+  border-color: #d3e9ee !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 6px 24px rgba(14, 116, 144, 0.05);
+}
+.app-header::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, #0e7490 0%, #9fd4dc 45%, #eaf7f9 100%);
+  content: "";
+}
+.app-header-inner {
+  min-height: 80px;
+}
+.header-titles {
+  min-width: 0;
+}
+.header-titles h2 {
+  margin: 0;
+  color: #1d3554;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+.header-titles p {
+  margin: 4px 0 0;
+  color: #7e93ad;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.app-menu-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #cfe4e9;
+  border-radius: 12px;
+  background: #fff;
+  color: #35556a;
+  box-shadow: 0 3px 10px rgba(14, 116, 144, 0.08);
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+.app-menu-button:hover {
+  border-color: #bfe0e5;
+  background: #eaf6f8;
+  color: #0e7490;
+}
+.app-menu-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.header-profile {
+  display: flex;
+  max-width: 340px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #114955;
+  border-radius: 15px;
+  background:
+    radial-gradient(
+      circle at 74% 18%,
+      rgba(94, 211, 225, 0.24),
+      transparent 25%
+    ),
+    linear-gradient(145deg, #072e36 0%, #0b4a56 58%, #0e5c70 100%);
+  padding: 7px 8px 7px 14px;
+  box-shadow: 0 8px 20px rgba(7, 46, 54, 0.14);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.header-account-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+.header-profile:hover {
+  border-color: #0e7490;
+  box-shadow: 0 10px 24px rgba(7, 46, 54, 0.2);
+}
+.header-profile:focus-visible {
+  outline: 3px solid rgba(14, 116, 144, 0.45);
+  outline-offset: 3px;
+}
+.header-profile-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  padding: 9px;
+  border: 1px solid #cfe4e9;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(7, 46, 54, 0.16);
+}
+.profile-menu-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px;
+  border: 1px solid #d3e9ee;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff 45%, #e4f1f3);
+}
+.profile-menu-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #072e36;
+  border-radius: 12px;
+  background: #072e36;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.profile-menu-copy {
+  min-width: 0;
+}
+.profile-menu-copy > span,
+.profile-menu-copy > strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-menu-overline {
+  margin-bottom: 3px;
+  color: #8a9db5;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.profile-menu-copy > strong {
+  color: #2e496b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.profile-menu-copy .profile-menu-email {
+  margin-top: 3px;
+  color: #8193aa;
+  font-size: 10px;
+}
+.profile-sign-out {
+  display: flex;
+  width: fit-content;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 8px;
+  margin-left: auto;
+  padding: 0 11px;
+  border: 1px solid #cfe4e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #0e7490;
+  cursor: pointer;
+  font-family: Poppins, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(14, 116, 144, 0.05);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+.profile-sign-out:hover,
+.profile-sign-out:focus-visible {
+  border-color: #9fd4dc;
+  background: #eaf6f8;
+  color: #0b5a6c;
+  transform: translateY(-1px);
+}
+.profile-sign-out:focus-visible {
+  outline: 2px solid #22a6c3;
+  outline-offset: -2px;
+}
+.profile-sign-out svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.logout-confirm-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 46, 54, 0.48);
+  padding: 24px;
+  backdrop-filter: blur(7px);
+}
+.logout-confirm-dialog {
+  width: min(440px, 100%);
+  border: 1px solid #d3e9ee;
+  border-radius: 20px;
+  background: #fff;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 28px 70px rgba(7, 46, 54, 0.28);
+  animation: logout-dialog-enter 180ms ease-out both;
+}
+.logout-confirm-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  border: 1px solid #072e36;
+  border-radius: 16px;
+  background: #072e36;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(7, 46, 54, 0.08);
+}
+.logout-confirm-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.logout-confirm-dialog h2 {
+  margin: 0;
+  color: #1d3554;
+  font-size: 22px;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}
+.logout-confirm-dialog p {
+  max-width: 350px;
+  margin: 10px auto 24px;
+  color: #71839a;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.logout-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.logout-confirm-actions button {
+  min-height: 46px;
+  border-radius: 11px;
+  font:
+    700 12px Poppins,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+.logout-stay-button {
+  border: 1px solid #d3e9ee;
+  background: #fff;
+  color: #4b6684;
+}
+.logout-stay-button:hover {
+  border-color: #9fd4dc;
+  background: #eaf6f8;
+  color: #0b5a6c;
+}
+.logout-confirm-button {
+  border: 1px solid #f3cfd4;
+  background: #fdecef;
+  color: #b95d69;
+  box-shadow: 0 8px 18px rgba(185, 93, 105, 0.07);
+}
+.logout-confirm-button:hover {
+  border-color: #edaab3;
+  background: #fadfe3;
+  color: #a94d5a;
+  box-shadow: 0 10px 22px rgba(185, 93, 105, 0.12);
+  transform: translateY(-1px);
+}
+@keyframes logout-dialog-enter {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.985);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
-
-.account-menu__profile {
+@media (max-width: 480px) {
+  .logout-confirm-dialog {
+    padding: 22px 18px 18px;
+  }
+  .logout-confirm-actions {
+    grid-template-columns: 1fr;
+  }
+}
+.header-profile-copy {
+  min-width: 0;
+  text-align: right;
+}
+.header-user-overline {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  border-bottom: 1px solid #eef2f6;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, #fff, #f7fbfc);
-}
-
-.account-menu__avatar {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: 0 0 2.75rem;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--medivoy-accent), #155e75);
-  color: #fff;
-  box-shadow: 0 8px 18px -12px rgb(14 116 144 / 0.65);
-}
-
-.account-menu__role {
-  flex-shrink: 0;
-  border: 1px solid #d8e9ed;
-  border-radius: 999px;
-  background: #eff7f8;
-  padding: 0.25rem 0.5rem;
-  color: #0e5c70;
-  font-size: 0.6875rem;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 2px;
+  color: #bdeaf0;
+  font-size: 8px;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-
-.account-menu__links {
-  padding: 0.5rem;
+.header-user-overline i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #43a77b;
+  box-shadow: 0 0 0 3px rgba(67, 167, 123, 0.16);
 }
-
-.account-menu__action,
-.sign-out-button {
-  display: flex;
-  min-height: 42px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.875rem;
-  color: #38536a;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
+.header-user-name,
+.header-user-email {
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.account-menu__action {
-  justify-content: flex-start;
-  gap: 0.625rem;
-  min-height: 44px;
-  border-radius: 0.75rem;
-  padding: 0.625rem;
+.header-user-name {
+  margin: 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
 }
-
-.account-menu__action:hover {
-  background: #edf7f8;
-  color: #123047;
+.header-user-email {
+  margin: 1px 0 0;
+  color: #d7eef0;
+  font-size: 10px;
+  line-height: 1.4;
 }
-
-.account-menu__action-icon {
+.header-avatar {
   display: grid;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 2rem;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
   place-items: center;
-  border-radius: 0.625rem;
-  background: #f1f6f8;
-  color: #557083;
+  border: 1px solid rgba(205, 240, 245, 0.34);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #22a6c3, #0b5a6c);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(14, 116, 144, 0.18);
 }
-
-.account-menu__action--danger {
-  color: #9f1239;
+@media (max-width: 1279px) {
+  .app-sidebar {
+    transform: translateX(-102%);
+    transition: transform 0.25s ease;
+  }
+  .sidebar-toggle {
+    display: none;
+  }
+  .app-sidebar-collapsed {
+    width: 264px;
+  }
+  .app-sidebar-collapsed .sidebar-brand {
+    justify-content: flex-start;
+    padding: 14px 22px;
+  }
+  .app-sidebar-collapsed .brand-row {
+    align-items: flex-start;
+  }
+  .app-sidebar-collapsed .brand-logo,
+  .app-sidebar-collapsed .brand-caption,
+  .app-sidebar-collapsed .nav-label,
+  .app-sidebar-collapsed .nav-item > .flex-1,
+  .app-sidebar-collapsed .account-copy,
+  .app-sidebar-collapsed .sign-out-label {
+    display: revert;
+  }
+  .app-sidebar-collapsed .brand-collapsed-mark {
+    display: none;
+  }
+  .app-sidebar-collapsed .nav-badge {
+    display: revert;
+  }
+  .app-sidebar-collapsed .brand-logo {
+    width: 176px;
+  }
+  .app-sidebar-collapsed > .flex-1.overflow-y-auto {
+    padding: 16px 14px;
+  }
+  .app-sidebar-collapsed .nav-item {
+    justify-content: flex-start;
+    padding: 4px 9px;
+  }
+  .app-sidebar-collapsed .sidebar-account {
+    padding: 12px;
+  }
+  .app-sidebar-collapsed .account-card {
+    justify-content: flex-start;
+    border-color: #114955;
+    background:
+      radial-gradient(
+        circle at 88% 12%,
+        rgba(94, 211, 225, 0.2),
+        transparent 28%
+      ),
+      linear-gradient(145deg, #072e36 0%, #0b4a56 58%, #0e5c70 100%);
+    padding: 9px;
+  }
+  .app-sidebar-collapsed .sign-out {
+    width: 100%;
+    margin: 8px 0 0;
+  }
+  .flex-1.xl\:pl-80.app-content-collapsed {
+    padding-left: 0;
+  }
+  .app-sidebar-open {
+    transform: translateX(0);
+  }
+  .sidebar-close {
+    position: absolute;
+    z-index: 2;
+    top: 14px;
+    right: 14px;
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid #cfe4e9;
+    border-radius: 11px;
+    background: #fff;
+    color: #607894;
+    cursor: pointer;
+  }
+  .sidebar-close svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .flex-1.xl\:pl-80 {
+    padding-left: 0;
+  }
 }
-
-.account-menu__action--danger .account-menu__action-icon {
-  background: #fff1f2;
-  color: #be123c;
+@media (max-width: 640px) {
+  .app-header-inner {
+    min-height: 72px;
+  }
+  .app-header {
+    min-height: 74px;
+  }
+  .header-titles h2 {
+    font-size: 17px;
+  }
+  .header-titles p {
+    font-size: 10px;
+  }
+  .header-profile {
+    max-width: 48vw;
+    gap: 8px;
+    border: 1px solid #114955;
+    background:
+      radial-gradient(
+        circle at 74% 18%,
+        rgba(94, 211, 225, 0.24),
+        transparent 25%
+      ),
+      linear-gradient(145deg, #072e36 0%, #0b4a56 58%, #0e5c70 100%);
+    padding: 6px;
+  }
+  .header-profile-copy {
+    max-width: calc(48vw - 64px);
+  }
+  .header-user-name,
+  .header-user-email {
+    max-width: 100%;
+  }
+  .header-profile-menu {
+    top: calc(100% + 8px);
+  }
+  .header-avatar {
+    width: 38px;
+    height: 38px;
+  }
 }
-
-.account-menu__action--danger:hover {
-  background: #fff1f2;
-  color: #881337;
-}
-
-.sign-out-button {
-  border-color: var(--medivoy-border);
-  background: #fff;
-}
-
-.sign-out-button:hover {
-  border-color: #cbd9e5;
-  background: #f8fafc;
-  color: #123047;
-  transform: translateY(-1px);
-}
-
 @media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
   .nav-item,
-  .menu-button,
-  .account-trigger,
-  .sign-out-button,
-  .account-menu__action {
+  .nav-icon,
+  .sign-out,
+  .sidebar-toggle,
+  .flex-1.xl\:pl-80,
+  .profile-sign-out,
+  .logout-confirm-dialog,
+  .logout-confirm-actions button {
     transition: none;
+    animation: none;
   }
 }
 </style>
