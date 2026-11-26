@@ -24,16 +24,10 @@ export const useMedivoyApi = () => {
 
   return {
     // Auth
-    login: (email: string, password: string) =>
-      $fetch<any>(`${baseURL}/auth/login`, {
+    loginWithGoogle: (idToken: string) =>
+      $fetch<any>(`${baseURL}/auth/google`, {
         method: 'POST',
-        body: { email, password },
-      }),
-
-    register: (email: string, password: string, role = 'patient') =>
-      $fetch<any>(`${baseURL}/auth/register`, {
-        method: 'POST',
-        body: { email, password, role },
+        body: { idToken },
       }),
 
     // Reports
