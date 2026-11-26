@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /reports
+Disallow: /family
+Disallow: /nutrition
+Disallow: /lab-kits
+Disallow: /genetics
+Disallow: /pharmacy
+Disallow: /admin
+Disallow: /profile
+
+Sitemap: https://geno.medivoy.in/sitemap.xml

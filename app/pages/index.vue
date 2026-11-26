@@ -396,6 +396,41 @@
 <script setup lang="ts">
 definePageMeta({ layout: false });
 
+const pageTitle = "AI Medical & Genetic Report Analysis";
+const pageDescription =
+  "Upload your medical, lab, or genetic report and get instant AI-powered analysis. Track family health history and receive personalized nutrition and genetics guidance, all in one place.";
+
+useSeoMeta({
+  title: pageTitle,
+  description: pageDescription,
+  ogTitle: "Medivoy — AI Medical & Genetic Report Analysis",
+  ogDescription: pageDescription,
+  ogType: "website",
+  twitterCard: "summary_large_image",
+  twitterTitle: "Medivoy — AI Medical & Genetic Report Analysis",
+  twitterDescription: pageDescription,
+});
+
+useHead({
+  script: [
+    {
+      type: "application/ld+json",
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "Medivoy",
+        url: "https://geno.medivoy.in/",
+        applicationCategory: "HealthApplication",
+        operatingSystem: "Any",
+        description: pageDescription,
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        keywords:
+          "medical report analysis, AI medical report analysis, health report analysis, genetic report analysis, DNA report analysis, blood test report analysis",
+      }),
+    },
+  ],
+});
+
 const api = useMedivoyApi();
 const auth = useAuthStore();
 const router = useRouter();
