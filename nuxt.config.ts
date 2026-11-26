@@ -25,7 +25,7 @@ export default defineNuxtConfig({
   modules: ['@pinia/nuxt', '@nuxtjs/google-fonts'],
   vite: { plugins: [tailwindcss()] },
   pinia: { storesDirs: ['app/stores/**'] },
-  runtimeConfig: { public: { apiBase: 'https://api-geno.medivoy.ae/v2/api', siteUrl } },
+  runtimeConfig: { public: { apiBase: 'https://api-geno.medivoy.ae/v2/api', siteUrl, googleClientId: '' } },
   css: ['~/assets/css/main.css'],
   googleFonts: { families: { Inter: [300, 400, 500, 600, 700, 800] } },
   app: {

@@ -7,7 +7,7 @@ import { AuthController } from './auth.controller'
 import { JwtStrategy } from './jwt.strategy'
 import { User } from './entities/user.entity'
 @Module({
-  imports: [PassportModule, JwtModule.register({ secret:  'change-me', signOptions: { expiresIn: '7d' } }), TypeOrmModule.forFeature([User])],
+  imports: [PassportModule, JwtModule.register({ secret: process.env.JWT_SECRET, signOptions: { expiresIn: '7d' } }), TypeOrmModule.forFeature([User])],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService],

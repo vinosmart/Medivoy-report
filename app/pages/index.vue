@@ -69,7 +69,6 @@
       class="auth-panel flex min-h-[100dvh] w-full flex-col items-center justify-center bg-transparent px-5 py-8 sm:px-10 sm:py-12"
     >
       <div
-        ref="authCard"
         class="auth-card flex w-full max-w-md flex-col gap-7 rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.38)] sm:p-8"
       >
         <!-- Mobile logo -->
@@ -84,306 +83,40 @@
         </div>
 
         <div class="auth-item auth-item--intro">
-          <Transition name="auth-copy" mode="out-in">
-            <header :key="tab" class="space-y-2">
-              <p class="text-sm font-semibold text-blue-700">
-                {{ tab === "login" ? "Welcome back" : "Get started with Medivoy" }}
-              </p>
-              <h2 class="medivoy-title-underline text-3xl font-semibold tracking-tight text-slate-950">
-                {{ tab === "login" ? "Sign in to your account" : "Create your account" }}
-              </h2>
-              <p class="text-sm leading-6 text-slate-600">
-                {{
-                  tab === "login"
-                    ? "Access your health profile and reports."
-                    : "Bring your health information together in one place."
-                }}
-              </p>
-            </header>
-          </Transition>
+          <header class="space-y-2">
+            <p class="text-sm font-semibold text-blue-700">Welcome to Medivoy</p>
+            <h2 class="medivoy-title-underline text-3xl font-semibold tracking-tight text-slate-950">
+              Sign in to continue
+            </h2>
+            <p class="text-sm leading-6 text-slate-600">
+              Continue with Google to access or create your health profile. No
+              passwords to remember.
+            </p>
+          </header>
         </div>
 
-        <!-- Tabs -->
-        <div
-          class="auth-tabs auth-item auth-item--tabs flex gap-1 rounded-xl bg-slate-100 p-1"
-          role="tablist"
-          aria-label="Account access"
-        >
-          <span
-            class="auth-tab-indicator"
-            :class="{ 'auth-tab-indicator--register': tab === 'register' }"
-            aria-hidden="true"
-          ></span>
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="tab === 'login'"
-            @click="tab = 'login'; message = ''; passwordVisible = false"
-            class="auth-tab-button flex-1 rounded-lg py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        <div class="auth-item auth-item--action flex flex-col items-center gap-4">
+          <div
+            v-if="loading"
+            class="flex items-center justify-center gap-2 py-3 text-sm font-medium text-slate-600"
+          >
+            <span class="h-4 w-4 animate-spin rounded-full border-2 border-cyan-200 border-t-cyan-700" aria-hidden="true"></span>
+            Signing you in...
+          </div>
+          <div v-show="!loading" id="google-signin-button"></div>
+          <p
+            v-if="message"
+            role="alert"
+            class="auth-message w-full rounded-xl px-4 py-3 text-center text-sm font-medium"
             :class="
-              tab === 'login'
-                ? 'text-slate-950'
-                : 'text-slate-500'
+              error
+                ? 'bg-rose-50 text-rose-700'
+                : 'bg-emerald-50 text-emerald-700'
             "
           >
-            Sign in
-          </button>
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="tab === 'register'"
-            @click="tab = 'register'; message = ''; passwordVisible = false"
-            class="auth-tab-button flex-1 rounded-lg py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            :class="
-              tab === 'register'
-                ? 'text-slate-950'
-                : 'text-slate-500'
-            "
-          >
-            Create account
-          </button>
+            {{ message }}
+          </p>
         </div>
-
-        <!-- Login form -->
-        <Transition
-          name="auth-form"
-          mode="out-in"
-          @before-leave="freezeAuthCardHeight"
-          @before-enter="animateAuthCardHeight"
-        >
-          <form
-            v-if="tab === 'login'"
-            key="login"
-            class="space-y-5"
-            @submit.prevent="submitLogin"
-          >
-            <div class="auth-field auth-field--one space-y-2">
-              <label for="login-email" class="text-sm font-medium text-slate-700">Email address</label>
-              <input
-                id="login-email"
-                v-model="email"
-                type="email"
-                autocomplete="email"
-                placeholder="you@example.com"
-                class="auth-input w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
-                required
-              />
-            </div>
-            <div class="auth-field auth-field--two space-y-2">
-              <label for="login-password" class="text-sm font-medium text-slate-700">
-                Password
-              </label>
-              <div class="relative">
-                <input
-                  id="login-password"
-                  v-model="password"
-                  :type="passwordVisible ? 'text' : 'password'"
-                  autocomplete="current-password"
-                  placeholder="••••••••"
-                  class="auth-input w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 pr-20 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
-                  required
-                />
-                <button
-                  type="button"
-                  class="auth-password-toggle absolute inset-y-0 right-3 my-auto flex h-9 items-center rounded-md px-2 text-xs font-semibold text-slate-500 transition-colors hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
-                  :aria-pressed="passwordVisible"
-                  @click="passwordVisible = !passwordVisible"
-                >
-                  {{ passwordVisible ? "Hide" : "Show" }}
-                </button>
-              </div>
-            </div>
-            <button
-              :disabled="loading"
-              type="submit"
-              class="medivoy-primary-button auth-submit auth-submit--login w-full rounded-xl bg-blue-700 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span v-if="loading" class="flex items-center justify-center gap-2">
-                <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
-                Signing in...
-              </span>
-              <span v-else>Sign in</span>
-            </button>
-            <p
-              v-if="message"
-              role="alert"
-              class="auth-message rounded-xl px-4 py-3 text-sm font-medium"
-              :class="
-                error
-                  ? 'bg-rose-50 text-rose-700'
-                  : 'bg-emerald-50 text-emerald-700'
-              "
-            >
-              {{ message }}
-            </p>
-          </form>
-
-          <!-- Register form -->
-          <form
-            v-else
-            key="register"
-            class="auth-register-form flex flex-col gap-4"
-            @submit.prevent="submitRegister"
-          >
-            <div class="auth-field auth-field--one space-y-2">
-              <label for="register-name" class="text-sm font-medium text-slate-700"
-                >Full name</label
-              >
-              <input
-                id="register-name"
-                v-model="name"
-                type="text"
-                autocomplete="name"
-                placeholder="Your name"
-                class="auth-input w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
-                required
-              />
-            </div>
-            <div class="auth-field auth-field--two space-y-2">
-              <label for="register-email" class="text-sm font-medium text-slate-700">Email address</label>
-              <input
-                id="register-email"
-                v-model="email"
-                type="email"
-                autocomplete="email"
-                placeholder="you@example.com"
-                class="auth-input w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
-                required
-              />
-            </div>
-            <div class="auth-field auth-field--three space-y-2">
-              <label for="register-password" class="text-sm font-medium text-slate-700">Password</label>
-              <div class="relative">
-                <input
-                  id="register-password"
-                  v-model="password"
-                  :type="passwordVisible ? 'text' : 'password'"
-                  autocomplete="new-password"
-                  placeholder="Min 8 characters"
-                  class="auth-input w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-20 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
-                  required
-                  minlength="8"
-                />
-                <button
-                  type="button"
-                  class="auth-password-toggle absolute inset-y-0 right-3 my-auto flex h-9 items-center rounded-md px-2 text-xs font-semibold text-slate-500 transition-colors hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
-                  :aria-pressed="passwordVisible"
-                  @click="passwordVisible = !passwordVisible"
-                >
-                  {{ passwordVisible ? "Hide" : "Show" }}
-                </button>
-              </div>
-            </div>
-            <div
-              class="auth-field auth-field--four space-y-2"
-              :class="{ 'auth-field--role-open': accountTypeMenuOpen }"
-            >
-              <label
-                id="register-role-label"
-                class="text-sm font-medium text-slate-700"
-              >
-                Account type
-              </label>
-              <div
-                class="auth-role-select"
-                :class="{ 'auth-role-select--open': accountTypeMenuOpen }"
-              >
-                <button
-                  id="register-role"
-                  ref="accountTypeButton"
-                  type="button"
-                  role="combobox"
-                  class="auth-role-trigger"
-                  aria-labelledby="register-role-label register-role-value"
-                  aria-haspopup="listbox"
-                  aria-controls="register-role-options"
-                  :aria-expanded="accountTypeMenuOpen"
-                  :aria-activedescendant="
-                    accountTypeMenuOpen
-                      ? `register-role-option-${accountTypeActiveIndex}`
-                      : undefined
-                  "
-                  @click.stop="toggleAccountTypeMenu"
-                  @keydown="handleAccountTypeKeydown"
-                >
-                  <span id="register-role-value">{{ selectedAccountTypeLabel }}</span>
-                  <span class="auth-role-chevron" aria-hidden="true"></span>
-                </button>
-                <Transition name="auth-role-menu">
-                  <div
-                    v-if="accountTypeMenuOpen"
-                    id="register-role-options"
-                    class="auth-role-options"
-                    role="listbox"
-                    aria-labelledby="register-role-label"
-                  >
-                    <div
-                      v-for="(option, index) in accountTypeOptions"
-                      :id="`register-role-option-${index}`"
-                      :key="option.value"
-                      class="auth-role-option"
-                      :class="{
-                        'auth-role-option--active': accountTypeActiveIndex === index,
-                        'auth-role-option--selected': role === option.value,
-                      }"
-                      role="option"
-                      :aria-selected="role === option.value"
-                      @mouseenter="accountTypeActiveIndex = index"
-                      @click.stop="selectAccountType(option.value)"
-                    >
-                      <span>{{ option.label }}</span>
-                      <span
-                        v-if="role === option.value"
-                        class="auth-role-check"
-                        aria-hidden="true"
-                      >
-                        ✓
-                      </span>
-                    </div>
-                  </div>
-                </Transition>
-              </div>
-            </div>
-            <div class="auth-field auth-field--terms flex items-start gap-3">
-              <ProfessionalCheckbox
-                v-model="agreed"
-                aria-label="Agree to the terms and privacy policy"
-                class="mt-0.5"
-              />
-              <p class="text-xs leading-5 text-slate-500">
-                I agree to Medivoy's
-                <span class="font-medium text-slate-700">terms of service</span>
-                and
-                <span class="font-medium text-slate-700">privacy policy</span>.
-              </p>
-            </div>
-            <button
-              :disabled="loading || !agreed"
-              type="submit"
-              class="medivoy-primary-button auth-submit auth-submit--register w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span v-if="loading" class="flex items-center justify-center gap-2">
-                <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
-                Creating account...
-              </span>
-              <span v-else>Create account</span>
-            </button>
-            <p
-              v-if="message"
-              role="alert"
-              class="auth-message rounded-xl px-4 py-3 text-sm font-medium"
-              :class="
-                error
-                  ? 'bg-rose-50 text-rose-700'
-                  : 'bg-emerald-50 text-emerald-700'
-              "
-            >
-              {{ message }}
-            </p>
-          </form>
-        </Transition>
 
         <p class="auth-security text-center text-xs leading-5 text-slate-500">
           Protected by 256-bit encryption · HIPAA-aligned privacy practices
@@ -435,243 +168,65 @@ const api = useMedivoyApi();
 const auth = useAuthStore();
 const router = useRouter();
 
-const authCard = ref<HTMLElement | null>(null);
-const tab = ref<"login" | "register">("login");
-const email = ref("");
-const password = ref("");
-const passwordVisible = ref(false);
-const name = ref("");
-const accountTypeOptions = [
-  { value: "patient", label: "Patient / Individual" },
-  { value: "doctor", label: "Doctor / Clinician" },
-] as const;
-type AccountType = (typeof accountTypeOptions)[number]["value"];
-const role = ref<AccountType>("patient");
-const accountTypeMenuOpen = ref(false);
-const accountTypeActiveIndex = ref(0);
-const accountTypeButton = ref<HTMLButtonElement | null>(null);
-const selectedAccountTypeLabel = computed(
-  () =>
-    accountTypeOptions.find((option) => option.value === role.value)?.label ??
-    accountTypeOptions[0].label,
-);
-const agreed = ref(false);
 const loading = ref(false);
 const message = ref("");
 const error = ref(false);
-let authCardHeightFrame = 0;
-let authCardHeightReset: number | undefined;
-
-const prefersReducedMotion = () =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-const closeAccountTypeMenu = () => {
-  accountTypeMenuOpen.value = false;
-};
-
-const openAccountTypeMenu = () => {
-  accountTypeActiveIndex.value = accountTypeOptions.findIndex(
-    (option) => option.value === role.value,
-  );
-  accountTypeMenuOpen.value = true;
-};
-
-const toggleAccountTypeMenu = () => {
-  if (accountTypeMenuOpen.value) {
-    closeAccountTypeMenu();
-    return;
-  }
-
-  openAccountTypeMenu();
-};
-
-const selectAccountType = (value: AccountType) => {
-  role.value = value;
-  closeAccountTypeMenu();
-  accountTypeButton.value?.focus();
-};
-
-const handleAccountTypeKeydown = (event: KeyboardEvent) => {
-  const optionCount = accountTypeOptions.length;
-
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-    event.preventDefault();
-    if (!accountTypeMenuOpen.value) {
-      openAccountTypeMenu();
-      return;
-    }
-
-    const direction = event.key === "ArrowDown" ? 1 : -1;
-    accountTypeActiveIndex.value =
-      (accountTypeActiveIndex.value + direction + optionCount) % optionCount;
-    return;
-  }
-
-  if (event.key === "Home" || event.key === "End") {
-    event.preventDefault();
-    accountTypeMenuOpen.value = true;
-    accountTypeActiveIndex.value = event.key === "Home" ? 0 : optionCount - 1;
-    return;
-  }
-
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    if (accountTypeMenuOpen.value) {
-      selectAccountType(accountTypeOptions[accountTypeActiveIndex.value].value);
-    } else {
-      openAccountTypeMenu();
-    }
-    return;
-  }
-
-  if (event.key === "Escape") {
-    closeAccountTypeMenu();
-    return;
-  }
-
-  if (event.key === "Tab") {
-    closeAccountTypeMenu();
-    return;
-  }
-
-  if (
-    event.key.length === 1 &&
-    !event.altKey &&
-    !event.ctrlKey &&
-    !event.metaKey
-  ) {
-    const matchIndex = accountTypeOptions.findIndex((option) =>
-      option.label.toLowerCase().startsWith(event.key.toLowerCase()),
-    );
-    if (matchIndex !== -1) {
-      event.preventDefault();
-      accountTypeActiveIndex.value = matchIndex;
-      if (!accountTypeMenuOpen.value) {
-        selectAccountType(accountTypeOptions[matchIndex].value);
-      }
-    }
-  }
-};
-
-const clearAuthCardHeightReset = () => {
-  if (authCardHeightReset !== undefined) {
-    window.clearTimeout(authCardHeightReset);
-    authCardHeightReset = undefined;
-  }
-};
-
-const freezeAuthCardHeight = () => {
-  const card = authCard.value;
-  if (!card) return;
-
-  window.cancelAnimationFrame(authCardHeightFrame);
-  clearAuthCardHeightReset();
-  if (prefersReducedMotion()) {
-    card.style.height = "";
-    return;
-  }
-
-  card.style.height = `${card.getBoundingClientRect().height}px`;
-};
-
-const animateAuthCardHeight = () => {
-  const card = authCard.value;
-  if (!card) return;
-
-  window.cancelAnimationFrame(authCardHeightFrame);
-  clearAuthCardHeightReset();
-  if (prefersReducedMotion()) {
-    card.style.height = "";
-    return;
-  }
-
-  const startHeight = card.getBoundingClientRect().height;
-
-  authCardHeightFrame = window.requestAnimationFrame(() => {
-    if (authCard.value !== card) return;
-
-    card.style.height = "auto";
-    const targetHeight = card.getBoundingClientRect().height;
-    card.style.height = `${startHeight}px`;
-    void card.offsetHeight;
-
-    authCardHeightFrame = window.requestAnimationFrame(() => {
-      if (authCard.value !== card) return;
-
-      card.style.height = `${targetHeight}px`;
-      authCardHeightReset = window.setTimeout(() => {
-        if (authCard.value === card) card.style.height = "";
-        authCardHeightReset = undefined;
-      }, 320);
-    });
-  });
-};
 
 const setMsg = (msg: string, isError = false) => {
   message.value = msg;
   error.value = isError;
 };
 
-const getAuthErrorMessage = (
-  cause: unknown,
-  action: "login" | "register",
-) => {
-  if (!cause || typeof cause !== "object") {
-    return "We couldn't connect right now. Please try again.";
-  }
-
-  const failure = cause as {
-    status?: unknown;
-    statusCode?: unknown;
-    response?: { status?: unknown } | null;
-  };
-  const status = [failure.statusCode, failure.status, failure.response?.status]
-    .find((value): value is number => typeof value === "number");
-
-  if (action === "login" && status === 401) {
-    return "That email and password combination wasn't recognized. Please try again.";
-  }
-  if (action === "register" && status === 409) {
-    return "An account with this email already exists. Please sign in instead.";
-  }
-  if (!status || status >= 500) {
-    return "We couldn't connect right now. Please check your connection and try again.";
-  }
-
-  return action === "login"
-    ? "We couldn't sign you in. Please check your details and try again."
-    : "We couldn't create your account. Please check your details and try again.";
-};
-
-const submitLogin = async () => {
+const handleGoogleCredential = async (response: { credential?: string }) => {
+  if (!response.credential) return;
   loading.value = true;
   message.value = "";
   try {
-    const res = await api.login(email.value, password.value);
+    const res = await api.loginWithGoogle(response.credential);
     auth.login(res.user, res.access_token);
-    setMsg("Login successful.");
     await router.push("/dashboard");
-  } catch (e: unknown) {
-    setMsg(getAuthErrorMessage(e, "login"), true);
-  } finally {
+  } catch {
+    setMsg("We couldn't sign you in with Google. Please try again.", true);
     loading.value = false;
   }
 };
 
-const submitRegister = async () => {
-  loading.value = true;
-  message.value = "";
-  try {
-    const res = await api.register(email.value, password.value, role.value);
-    auth.login(res.user, res.access_token);
-    setMsg("Account created successfully.");
-    await router.push("/dashboard");
-  } catch (e: unknown) {
-    setMsg(getAuthErrorMessage(e, "register"), true);
-  } finally {
-    loading.value = false;
+let googleScript: HTMLScriptElement | null = null;
+
+const initGoogleSignIn = () => {
+  const clientId = useRuntimeConfig().public.googleClientId;
+  const google = (window as any).google;
+  if (!clientId || !google?.accounts?.id) return;
+
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: handleGoogleCredential,
+  });
+  const target = document.getElementById("google-signin-button");
+  if (target) {
+    google.accounts.id.renderButton(target, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      width: 320,
+      text: "continue_with",
+    });
   }
 };
+
+onMounted(() => {
+  if ((window as any).google?.accounts?.id) {
+    initGoogleSignIn();
+    return;
+  }
+
+  googleScript = document.createElement("script");
+  googleScript.src = "https://accounts.google.com/gsi/client";
+  googleScript.async = true;
+  googleScript.defer = true;
+  googleScript.onload = initGoogleSignIn;
+  document.head.appendChild(googleScript);
+});
 </script>
 
 <style scoped>
@@ -697,64 +252,6 @@ const submitRegister = async () => {
       rgb(37 99 235 / 0.045),
       transparent 32%
     );
-}
-
-.auth-input {
-  background-image: linear-gradient(#0891b2, #0891b2);
-  background-position: left bottom;
-  background-repeat: no-repeat;
-  background-size: 0 2px;
-  transition:
-    background-size 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.auth-input:focus {
-  background-size: 100% 2px;
-}
-
-.auth-field:focus-within > label {
-  color: #0e7490;
-  transition: color 160ms ease;
-}
-
-.auth-tab-button[aria-selected="true"] {
-  color: #0e7490;
-}
-
-.auth-submit {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-
-.auth-submit::before {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    108deg,
-    transparent 25%,
-    rgb(103 232 249 / 0.3) 50%,
-    transparent 75%
-  );
-  content: "";
-  pointer-events: none;
-  transform: translateX(-110%);
-  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.auth-submit:hover::before {
-  transform: translateX(110%);
-}
-
-.auth-submit:focus-visible {
-  outline: 2px solid #0891b2;
-  outline-offset: 3px;
-}
-
-.auth-submit:disabled::before {
-  display: none;
 }
 
 .brand-panel::before {
@@ -1013,10 +510,6 @@ const submitRegister = async () => {
     gap: 1rem;
     padding-block: 1rem;
   }
-
-  .auth-register-form {
-    gap: 0.5rem;
-  }
 }
 
 @media (max-height: 800px) {
@@ -1114,55 +607,21 @@ const submitRegister = async () => {
 
 .auth-card {
   animation: card-arrive 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: height 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .auth-item,
-.auth-field,
 .auth-security,
 .auth-message {
   opacity: 0;
-  animation: item-arrive 480ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay) both;
-}
-
-.auth-submit {
-  animation: submit-arrive 480ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay) both;
+  animation: item-arrive 480ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
 }
 
 .auth-item--intro {
   --delay: 90ms;
 }
 
-.auth-item--tabs {
-  --delay: 170ms;
-}
-
-.auth-field--one {
-  --delay: 240ms;
-}
-
-.auth-field--two {
-  --delay: 320ms;
-}
-
-.auth-field--three {
-  --delay: 400ms;
-}
-
-.auth-field--four {
-  --delay: 480ms;
-}
-
-.auth-field--terms {
-  --delay: 540ms;
-}
-
-.auth-submit--login {
-  --delay: 420ms;
-}
-
-.auth-submit--register {
-  --delay: 620ms;
+.auth-item--action {
+  --delay: 220ms;
 }
 
 .auth-security {
@@ -1171,182 +630,6 @@ const submitRegister = async () => {
 
 .auth-message {
   --delay: 0ms;
-}
-
-.auth-form-enter-active,
-.auth-form-leave-active {
-  transition:
-    opacity 220ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 220ms ease;
-}
-
-.auth-form-enter-from {
-  filter: blur(3px);
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.auth-form-leave-to {
-  filter: blur(2px);
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-.auth-copy-enter-active,
-.auth-copy-leave-active {
-  transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.auth-copy-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-.auth-copy-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-.auth-tabs {
-  position: relative;
-}
-
-.auth-tab-indicator {
-  position: absolute;
-  inset-block: 4px;
-  left: 4px;
-  width: calc(50% - 6px);
-  border-radius: 0.5rem;
-  background: white;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
-  pointer-events: none;
-  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.auth-tab-indicator--register {
-  transform: translateX(calc(100% + 4px));
-}
-
-.auth-tab-button {
-  position: relative;
-  z-index: 1;
-}
-
-.auth-role-select {
-  position: relative;
-}
-
-.auth-field--role-open {
-  position: relative;
-  z-index: 3;
-}
-
-.auth-role-select--open {
-  z-index: 2;
-}
-
-.auth-role-trigger {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background: white;
-  padding: 0.75rem 1rem;
-  color: #0f172a;
-  font-size: 0.875rem;
-  text-align: left;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.auth-role-trigger:hover {
-  border-color: #94a3b8;
-}
-
-.auth-role-trigger:focus-visible {
-  border-color: #2563eb;
-  outline: none;
-  box-shadow: 0 0 0 4px #dbeafe;
-}
-
-.auth-role-chevron {
-  width: 0.5rem;
-  height: 0.5rem;
-  flex: none;
-  border-right: 1.5px solid #64748b;
-  border-bottom: 1.5px solid #64748b;
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform 180ms ease;
-}
-
-.auth-role-select--open .auth-role-chevron {
-  transform: translateY(2px) rotate(225deg);
-}
-
-.auth-role-options {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  left: 0;
-  z-index: 1;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.875rem;
-  background: white;
-  padding: 0.25rem;
-  box-shadow: 0 16px 36px rgb(15 23 42 / 0.16);
-}
-
-.auth-role-option {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-radius: 0.625rem;
-  padding: 0.7rem 0.75rem;
-  color: #334155;
-  font-size: 0.875rem;
-  text-align: left;
-  transition:
-    background-color 140ms ease,
-    color 140ms ease;
-}
-
-.auth-role-option--active,
-.auth-role-option:hover {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.auth-role-option--selected {
-  font-weight: 600;
-}
-
-.auth-role-check {
-  color: #1d4ed8;
-  font-size: 0.875rem;
-}
-
-.auth-role-menu-enter-active,
-.auth-role-menu-leave-active {
-  transform-origin: top;
-  transition:
-    opacity 140ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.auth-role-menu-enter-from,
-.auth-role-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.99);
 }
 
 @keyframes card-arrive {
@@ -1380,16 +663,6 @@ const submitRegister = async () => {
     filter: blur(0);
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes submit-arrive {
-  from {
-    transform: translateY(8px) scale(0.99);
-  }
-
-  to {
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -1494,46 +767,12 @@ const submitRegister = async () => {
 
   .auth-card,
   .auth-item,
-  .auth-field,
   .auth-security,
   .auth-message {
     animation: none;
     filter: none;
     opacity: 1;
     transform: none;
-  }
-
-  .auth-card,
-  .auth-copy-enter-active,
-  .auth-copy-leave-active {
-    transition: none;
-  }
-
-  .auth-submit {
-    animation: none;
-    filter: none;
-    transform: none;
-  }
-
-  .auth-input,
-  .auth-submit::before,
-  .auth-field:focus-within > label {
-    transition: none;
-  }
-
-  .auth-form-enter-active,
-  .auth-form-leave-active {
-    transition: none;
-  }
-
-  .auth-tab-indicator {
-    transition: none;
-  }
-
-  .auth-role-chevron,
-  .auth-role-menu-enter-active,
-  .auth-role-menu-leave-active {
-    transition: none;
   }
 
   .brand-motion {
